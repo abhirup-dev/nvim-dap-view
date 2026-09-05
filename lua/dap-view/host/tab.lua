@@ -368,6 +368,9 @@ end
 ---visits any other tabpage
 M.follows_tabs = false
 
+---The tabpage is ours end to end, code window included
+M.owns_tabpage = true
+
 M.is_open = function()
     if not M.is_active() then
         return false

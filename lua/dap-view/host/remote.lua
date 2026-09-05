@@ -597,6 +597,9 @@ end
 ---The placeholder is a never drawn float; the user's tabpage is irrelevant to it
 M.follows_tabs = false
 
+---The window lives in another Neovim process; this one has no tabpage of ours
+M.owns_tabpage = false
+
 M.is_open = function()
     if not chan or not util.is_win_valid(placeholder) then
         return false

@@ -18,6 +18,11 @@ local M = {}
 ---nil) `state.winnr` from the current tabpage's contents. A host that parks its
 ---window in a tabpage of its own, or in a float the user never switches away
 ---from, keeps owning it while the user is elsewhere
+---@field owns_tabpage boolean Does the host claim a whole tabpage of its own,
+---code window and all? Only such a host may reclaim a tabpage a restored vim
+---session left behind (`vim-sessions.lua`): every window in it was the host's,
+---so the tabpage goes whole. A host that lives in the user's own tabpage may
+---only reclaim one whose *every* window held a dap-view buffer
 ---@field is_active fun(): boolean Does the host still own something (a tabpage, a
 ---pane, a channel, a window) that `close` has to tear down? A host can own plenty
 ---while `is_open` is false: upstream's `TabEnter` handler nils `state.winnr`
