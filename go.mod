@@ -1,6 +1,6 @@
 module github.com/abhirup-dev/nvim-dap-mcp
 
-go 1.26.7
+go 1.25.0
 
 require (
 	github.com/modelcontextprotocol/go-sdk v1.7.0
