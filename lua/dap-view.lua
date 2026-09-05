@@ -72,4 +72,9 @@ M.navigate = function(opts)
     actions.navigate(opts)
 end
 
+---@param name dapview.HostName
+M.switch_host = function(name)
+    require("dap-view.host").switch(name)
+end
+
 return M

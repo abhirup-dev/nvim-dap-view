@@ -59,6 +59,19 @@ end, {
         return require("dap-view.complete").complete_sections(arg_lead)
     end,
 })
+command("DapViewHost", function(opts)
+    local ok, err = pcall(require("dap-view.host").switch, opts.fargs[1])
+    if not ok then
+        -- Strip the "file:line: " prefix, this is a user facing message
+        vim.notify((tostring(err):gsub("^.-:%d+: ", "")), vim.log.levels.ERROR)
+    end
+end, {
+    nargs = 1,
+    ---@param arg_lead string
+    complete = function(arg_lead)
+        return require("dap-view.complete").complete_hosts(arg_lead)
+    end,
+})
 command("DapViewNavigate", function(opts)
     require("dap-view").navigate({ wrap = opts.bang, count = tonumber(opts.fargs[1]) or 1 })
 end, {
