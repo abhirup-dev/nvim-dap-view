@@ -7,6 +7,7 @@ function M.validate(config)
     validate("tree", {
         max_value_width = { config.max_value_width, { "number", "string", "boolean" } },
         ellipsis = { config.ellipsis, "string" },
+        indent_width = { config.indent_width, { "number", "boolean" } },
         fold = { config.fold, "boolean" },
         fold_level = { config.fold_level, "number" },
         reroot_depth = { config.reroot_depth, { "number", "boolean" } },
@@ -21,6 +22,14 @@ function M.validate(config)
     end
     if type(max_value_width) == "number" and (max_value_width < 1 or max_value_width % 1 ~= 0) then
         error("tree.max_value_width: expected a positive integer, got " .. max_value_width)
+    end
+
+    local indent_width = config.indent_width
+    if indent_width == true then
+        error("tree.indent_width: expected an integer or false, got true")
+    end
+    if type(indent_width) == "number" and (indent_width < 1 or indent_width % 1 ~= 0) then
+        error("tree.indent_width: expected a positive integer, got " .. indent_width)
     end
 
     if config.fold_level < 0 or config.fold_level % 1 ~= 0 then

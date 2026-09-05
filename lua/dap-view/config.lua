@@ -168,6 +168,7 @@ local M = {}
 ---@class dapview.TreeConfig
 ---@field max_value_width integer|"auto"|false Clamp the value segment of a variable to this many display cells. `"auto"` uses the available window width minus the name column. `false` disables clamping.
 ---@field ellipsis string Appended to a clamped value
+---@field indent_width integer|false Buffer local `tabstop` for the view, i.e. how many cells one tree level takes. `false` leaves `tabstop` alone.
 ---@field fold boolean Enable `foldmethod=indent` in the nvim-dap-view window
 ---@field fold_level integer Initial `foldlevel` (only relevant when `fold` is enabled)
 ---@field reroot_depth integer|false Depth from which `:DapViewReroot` is hinted. `false` disables the hint
@@ -358,6 +359,7 @@ M.config = {
     tree = {
         max_value_width = 60,
         ellipsis = "…",
+        indent_width = 2,
         fold = true,
         fold_level = 2,
         reroot_depth = 6,
