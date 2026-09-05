@@ -6,6 +6,7 @@ local setup = require("dap-view.setup")
 local util = require("dap-view.util")
 local hl = require("dap-view.util.hl")
 local fmt = require("dap-view.util.fmt")
+local truncate = require("dap-view.util.truncate")
 
 local M = {}
 
@@ -17,7 +18,7 @@ local session
 ---Also need to handle concurrent calls, by creating multiple instances
 ---@class dapview.Canvas
 ---@field contents string[]
----@field highlights [string, [integer,integer], [integer,integer]][][]
+---@field highlights [string, [integer,integer], [integer,integer], integer?, vim.hl.range.Opts?][][]
 
 ---@param variables_reference integer
 ---@param parent_path string
@@ -65,12 +66,16 @@ local function show_variables(variables_reference, parent_path, line, depth, can
         -- Workaround for https://github.com/microsoft/vscode-js-debug/issues/2320
         local value = state.variable_path_to_set_variables[path] and state.variable_path_to_value[path]
             or variable.value
-        local content = prefix .. variable_name .. (#value > 0 and " = " or "") .. value
 
-        -- Can't have linebreaks with nvim_buf_set_lines
-        local trimmed_content = content:gsub("\n+", " ")
+        local separator = #value > 0 and " = " or ""
 
-        local indented_content = string.rep("\t", depth) .. trimmed_content
+        local display_value, is_truncated = truncate.format_value(value, {
+            name_col = truncate.name_col(depth, prefix .. variable_name .. separator),
+            variable = variable,
+            path = path,
+        })
+
+        local indented_content = string.rep("\t", depth) .. prefix .. variable_name .. separator .. display_value
 
         canvas.contents[#canvas.contents + 1] = indented_content
 
@@ -89,10 +94,21 @@ local function show_variables(variables_reference, parent_path, line, depth, can
         local type_hl_group = (updated and "WatchUpdated") or hl.hl_from_variable(variable)
 
         local hl_start = depth + #prefix
-        canvas.highlights[#canvas.highlights + 1] = {
-            { "WatchExpr", { line, hl_start }, { line, hl_start + #variable.name } },
-            type_hl_group and { type_hl_group, { line, hl_start + #variable_name + 3 }, { line, -1 } } or nil,
-        }
+
+        ---@type [string, [integer,integer], [integer,integer], integer?, vim.hl.range.Opts?][]
+        local line_highlights = { { "WatchExpr", { line, hl_start }, { line, hl_start + #variable.name } } }
+
+        if type_hl_group then
+            line_highlights[#line_highlights + 1] =
+                { type_hl_group, { line, hl_start + #variable_name + 3 }, { line, -1 } }
+        end
+
+        if is_truncated then
+            line_highlights[#line_highlights + 1] =
+                { "Truncated", { line, hl.ellipsis_col(indented_content) }, { line, -1 }, nil, hl.ELLIPSIS_OPTS }
+        end
+
+        canvas.highlights[#canvas.highlights + 1] = line_highlights
 
         line = line + 1
 
@@ -213,7 +229,7 @@ M.show = function()
 
         for _, highlights in ipairs(canvas.highlights) do
             for _, highlight in ipairs(highlights) do
-                hl.hl_range(highlight[1], highlight[2], highlight[3])
+                hl.hl_range(highlight[1], highlight[2], highlight[3], highlight[4], highlight[5])
             end
         end
 

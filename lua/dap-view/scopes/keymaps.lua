@@ -20,6 +20,14 @@ return {
         end,
         desc = "jump to parent",
     },
+    show_value = {
+        action = function()
+            trigger.at_cursor(function(line)
+                require("dap-view.tree.value").show(line)
+            end)
+        end,
+        desc = "show full value",
+    },
     set_value = {
         action = function()
             trigger.at_cursor(function(line)

@@ -7,8 +7,19 @@ local M = {}
 ---@param start [integer,integer]
 ---@param finish [integer,integer]
 ---@param bufnr integer?
-M.hl_range = function(hl_group, start, finish, bufnr)
-    vim.hl.range(bufnr or state.bufnr, globals.NAMESPACE, "NvimDapView" .. hl_group, start, finish)
+---@param opts vim.hl.range.Opts?
+M.hl_range = function(hl_group, start, finish, bufnr, opts)
+    vim.hl.range(bufnr or state.bufnr, globals.NAMESPACE, "NvimDapView" .. hl_group, start, finish, opts)
+end
+
+---The type highlight runs to the end of the line, so the ellipsis needs to sit above it
+M.ELLIPSIS_OPTS = { priority = vim.hl.priorities.user + 1 }
+
+---Byte column where the trailing ellipsis of a clamped line starts
+---@param content string The rendered line
+---@return integer
+M.ellipsis_col = function(content)
+    return math.max(#content - #require("dap-view.setup").config.tree.ellipsis, 0)
 end
 
 M.types_to_hl_group = {

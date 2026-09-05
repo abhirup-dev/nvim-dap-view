@@ -134,6 +134,7 @@ local M = {}
 ---@field toggle dapview.Keymap
 ---@field jump_to_parent dapview.Keymap
 ---@field set_value dapview.Keymap
+---@field show_value dapview.Keymap Show the full, untruncated value in a float
 
 ---@class dapview.HoverKeymapsConfig : dapview.ScopesKeymapsConfig
 ---@field quit dapview.Keymap
@@ -234,11 +235,13 @@ M.config = {
             toggle = { "<CR>", "<2-LeftMouse>" },
             jump_to_parent = "[[",
             set_value = "s",
+            show_value = "K",
         },
         watches = {
             toggle = { "<CR>", "<2-LeftMouse>" },
             jump_to_parent = "[[",
             set_value = "s",
+            show_value = "K",
             copy_value = "c",
             delete_expression = "d",
             append_expression = "a",
