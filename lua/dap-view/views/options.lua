@@ -30,6 +30,19 @@ M.set_options = function()
     buf.swapfile = false
     buf.modifiable = false
     buf.filetype = "dap-view"
+
+    local tree = setup.config.tree
+
+    if tree.fold then
+        -- `foldlevel` is indent divided by `shiftwidth`. A `shiftwidth` of 0 follows `tabstop`,
+        -- so one fold level is one tab of the tree, whatever the user's global `shiftwidth` is
+        buf.shiftwidth = 0
+
+        win.foldmethod = "indent"
+        win.foldenable = true
+        win.foldlevel = tree.fold_level
+        win.foldtext = "v:lua.require'dap-view.tree.fold'.foldtext()"
+    end
 end
 
 return M
