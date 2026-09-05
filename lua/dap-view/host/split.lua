@@ -156,6 +156,9 @@ end
 ---`follow_tab` moves it along with them
 M.follows_tabs = true
 
+---Our split shares the user's tabpage with the user's own windows
+M.owns_tabpage = false
+
 M.is_open = function()
     return util.is_win_valid(state.winnr) and true or false
 end

@@ -80,19 +80,79 @@ local dapview_width = function()
     return math.floor(size_ < 1 and vim.go.columns * size_ or size_)
 end
 
----The dap-view window inside `page`, found by the marker `attach_window` sets.
+---A window inside `page` carrying one of dap-view's window markers.
 ---
----`state.winnr` is not trustworthy on its own: upstream's `TabEnter` handler nils
----it whenever the user visits a tabpage without a dap-view window, even though
----ours is still sitting in the tabpage we own
+---`state.winnr`/`state.term_winnr` are not trustworthy on their own: upstream's
+---`TabEnter` handler nils them whenever the user visits a tabpage without a
+---dap-view window, even though ours are still sitting in the tabpage we own
 ---@param page integer
+---@param marker? "dapview_win"|"dapview_win_term" Defaults to the view window
 ---@return integer?
-local find_win = function(page)
+local find_win = function(page, marker)
+    marker = marker or "dapview_win"
+
     for _, winnr in ipairs(api.nvim_tabpage_list_wins(page)) do
-        if vim.w[winnr].dapview_win then
+        if vim.w[winnr][marker] then
             return winnr
         end
     end
+end
+
+---The bottom-most window of `page`, so a split below it spans the tabpage
+---@param page integer
+---@return integer?
+local bottom_win = function(page)
+    local best, best_row
+
+    for _, winnr in ipairs(api.nvim_tabpage_list_wins(page)) do
+        -- Floats have no place in a layout decision
+        if api.nvim_win_get_config(winnr).relative == "" then
+            local row = api.nvim_win_get_position(winnr)[1]
+
+            if not best_row or row > best_row then
+                best, best_row = winnr, row
+            end
+        end
+    end
+
+    return best
+end
+
+---Re-open the console terminal as a bottom split of `page`, so `:DapViewClose`
+---leaves it visible the way the split host does.
+---
+---`console/view.lua`'s `open_term_buf_win` cannot be reused here: it places the
+---window relative to `state.winnr` following `windows.terminal.position`, and by
+---now there is no dap-view window left to place anything against
+---@param page integer
+---@param bufnr integer
+---@param height integer
+---@return integer?
+local relocate_term_win = function(page, bufnr, height)
+    local anchor = bottom_win(page)
+
+    if not util.is_win_valid(anchor) then
+        return
+    end
+
+    -- The tabpage is the user's, not ours: the terminal may not take it over
+    local capped = math.max(1, math.min(height, math.floor(vim.go.lines * 0.4)))
+
+    local ok, winnr = pcall(api.nvim_open_win, bufnr, false, {
+        split = "below",
+        win = anchor,
+        height = capped,
+    })
+
+    if not ok or not util.is_win_valid(winnr) then
+        return
+    end
+
+    vim.w[winnr].dapview_win_term = true
+
+    require("dap-view.console.options").set_win_options(winnr)
+
+    return winnr
 end
 
 ---The code window, when the layout has one and the host is open
@@ -130,8 +190,20 @@ M.open = function(bufnr, _)
         end
 
         -- The terminal belongs to our tabpage. Any leftover term window is
-        -- necessarily somewhere else, since this tabpage was just created
-        for _, winnr in ipairs({ state.last_term_winnr, state.term_winnr }) do
+        -- necessarily somewhere else, since this tabpage was just created --
+        -- including the one `close` relocated into the user's tabpage.
+        --
+        -- Built by hand rather than as a list literal: either field may be nil,
+        -- and a hole at index 1 would cut `ipairs` short
+        local leftovers = {}
+
+        for _, winnr in ipairs({ state.last_term_winnr or false, state.term_winnr or false }) do
+            if winnr then
+                table.insert(leftovers, winnr)
+            end
+        end
+
+        for _, winnr in ipairs(leftovers) do
             if util.is_win_valid(winnr) then
                 pcall(api.nvim_win_close, winnr, true)
             end
@@ -191,12 +263,20 @@ end
 ---@param hide_terminal? boolean
 M.close = function(hide_terminal)
     local target = tabpage
+    local origin = origin_tabpage
 
     tabpage = nil
     code_winnr = nil
+    origin_tabpage = nil
+
+    ---The terminal window that outlives this `close`, if any
+    ---@type integer?
+    local surviving
 
     if target and api.nvim_tabpage_is_valid(target) then
         local winnr = util.is_win_valid(state.winnr) and state.winnr or find_win(target)
+        local term_win = util.is_win_valid(state.term_winnr) and state.term_winnr
+            or find_win(target, "dapview_win_term")
 
         -- Whatever size the user left the window at, so a `:DapViewUndock` /
         -- `:DapViewDock` round trip does not snap back to the configured width.
@@ -208,42 +288,88 @@ M.close = function(hide_terminal)
                 width = api.nvim_win_get_width(winnr),
                 height = api.nvim_win_get_height(winnr),
                 layout = layout,
-                has_term = util.is_win_valid(state.term_winnr) and true or false,
+                has_term = util.is_win_valid(term_win) and true or false,
             }
+        end
+
+        ---@type integer?, integer?
+        local term_bufnr, term_height
+
+        if util.is_win_valid(term_win) then
+            ---@cast term_win integer
+
+            if hide_terminal then
+                -- The helper reads `state.term_winnr`, so it has to still point
+                -- at the window: niling first is what made this call a no-op
+                state.term_winnr = term_win
+
+                term.hide_term_buf_win()
+
+                -- Parity with the split host, which also drops a terminal left
+                -- over in another tabpage
+                if state.last_term_winnr ~= term_win and util.is_win_valid(state.last_term_winnr) then
+                    pcall(api.nvim_win_close, state.last_term_winnr, true)
+                end
+            else
+                -- Upstream's `:DapViewClose` keeps the terminal window visible;
+                -- ours is inside the tabpage we are about to close, so carry the
+                -- buffer (and its height) over to the user's own tabpage
+                term_bufnr = api.nvim_win_get_buf(term_win)
+                term_height = api.nvim_win_get_height(term_win)
+            end
         end
 
         without_layout_autocmds(function()
             if #api.nvim_list_tabpages() > 1 then
-                if api.nvim_get_current_tabpage() == target and origin_tabpage then
-                    if api.nvim_tabpage_is_valid(origin_tabpage) then
+                if api.nvim_get_current_tabpage() == target and origin then
+                    if api.nvim_tabpage_is_valid(origin) then
                         -- Land back where the user came from
-                        api.nvim_set_current_tabpage(origin_tabpage)
+                        api.nvim_set_current_tabpage(origin)
                     end
                 end
 
                 -- `:tabclose` takes a range, not a count
                 pcall(vim.cmd.tabclose, { range = { api.nvim_tabpage_get_number(target) }, bang = true })
+
+                -- Only this branch takes the terminal down with the tabpage. In
+                -- the single-tabpage branch below it is already in the tabpage
+                -- the user is left with, so relocating would duplicate it
+                if term_bufnr and term_height and util.is_buf_valid(term_bufnr) then
+                    local page = (origin and api.nvim_tabpage_is_valid(origin) and origin)
+                        or api.nvim_get_current_tabpage()
+
+                    surviving = relocate_term_win(page, term_bufnr, term_height)
+                end
             elseif util.is_win_valid(winnr) then
                 -- Only tabpage left: closing it would take Neovim down with it
                 pcall(api.nvim_win_close, winnr, true)
+
+                surviving = util.is_win_valid(term_win) and term_win or nil
             end
         end)
-    end
 
-    origin_tabpage = nil
+        state.winnr = nil
+        state.last_term_winnr = nil
 
-    state.winnr = nil
-    state.term_winnr = nil
-    state.last_term_winnr = nil
-
-    if hide_terminal then
-        term.hide_term_buf_win()
+        -- `open` closes whatever this points at before creating its own terminal
+        -- window, which is what keeps a relocated terminal from becoming a
+        -- second one.
+        --
+        -- These resets live inside the branch on purpose: `actions.close`
+        -- deletes `state.bufnr` right after calling us, and the `BufWipeout`
+        -- autocmd it installed calls `actions.close()` — and therefore us —
+        -- again. That pass owns no tabpage, and must not clear the window we
+        -- just relocated out from under the next `open`
+        state.term_winnr = surviving
     end
 end
 
 ---We park the window in a tabpage of our own, so it stays ours while the user
 ---visits any other tabpage
 M.follows_tabs = false
+
+---The tabpage is ours end to end, code window included
+M.owns_tabpage = true
 
 M.is_open = function()
     if not M.is_active() then

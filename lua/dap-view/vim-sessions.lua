@@ -41,32 +41,103 @@ M.restore_state = function()
     state.watched_expressions = vim.json.decode(vim.g[SESSION_VARIABLES["watches"]] or "{}") or {}
 end
 
+---Tabpages the restored session left behind for us.
+---
+---A host that owns a whole tabpage owns everything in it, the code window
+---included, so a restored tabpage that held *any* of the buffers we are about to
+---delete is the debugger's and goes whole. A host that lives in the user's own
+---tabpage only gets to reclaim a tabpage whose *every* window held one of them.
+---@param doomed integer[]
+---@return integer[]
+local stale_tabpages = function(doomed)
+    local owns_tabpage = require("dap-view.host").get().owns_tabpage
+
+    local stale = {}
+
+    for _, page in ipairs(api.nvim_list_tabpages()) do
+        local wins = api.nvim_tabpage_list_wins(page)
+
+        local held = false
+        local only = #wins > 0
+
+        for _, win in ipairs(wins) do
+            if vim.tbl_contains(doomed, api.nvim_win_get_buf(win)) then
+                held = true
+            else
+                only = false
+            end
+        end
+
+        if (owns_tabpage and held) or only then
+            table.insert(stale, page)
+        end
+    end
+
+    return stale
+end
+
+---@param pages integer[]
+local close_tabpages = function(pages)
+    if #pages == 0 then
+        return
+    end
+
+    local current = api.nvim_get_current_tabpage()
+
+    for _, page in ipairs(pages) do
+        -- Never take Neovim down with the last tabpage. The number is recomputed
+        -- each time on purpose: closing one shifts every tabpage after it
+        if #api.nvim_list_tabpages() > 1 and api.nvim_tabpage_is_valid(page) then
+            -- `:tabclose` takes a range, not a count
+            pcall(vim.cmd.tabclose, { range = { api.nvim_tabpage_get_number(page) }, bang = true })
+        end
+    end
+
+    -- Land where the restore left the user, or on the first tabpage when that is
+    -- one of the ones we just closed
+    local target = api.nvim_tabpage_is_valid(current) and current or api.nvim_list_tabpages()[1]
+
+    pcall(api.nvim_set_current_tabpage, target)
+end
+
 M.load_session_hook = function()
-    local restored = false
+    ---Buffers the restore brought back that we have to drop: the filetype
+    ---information for the REPL may have been lost, and likewise for the terminal
+    ---@type integer[]
+    local doomed = {}
 
     for _, buf in ipairs(api.nvim_list_bufs()) do
         local name = api.nvim_buf_get_name(buf)
 
-        -- The filetype information for the REPL may have been lost
-        -- Likewise, a similar situation happens with the terminal
         if name == globals.MAIN_BUF_NAME or name:match("%[dap%-repl%-%d+%]$") or name:match("%[dap%-terminal%] ") then
-            api.nvim_buf_delete(buf, { force = true })
-
-            -- We may need to delete multiple buffers, but we only have to restore once
-            if not restored then
-                M.restore_state()
-
-                -- Must schedule to properly restore breakpoints
-                -- Otherwise might restore before the signs load
-                -- NOTE: restoring the actual breakpoints is done by another plugin
-                vim.schedule(function()
-                    require("dap-view.actions").open()
-                end)
-
-                restored = true
-            end
+            table.insert(doomed, buf)
         end
     end
+
+    if #doomed == 0 then
+        return
+    end
+
+    -- Computed before the deletion: once the buffers are gone, their windows show
+    -- a fresh empty buffer instead and nothing points back at the debugger
+    local stale = stale_tabpages(doomed)
+
+    for _, buf in ipairs(doomed) do
+        api.nvim_buf_delete(buf, { force = true })
+    end
+
+    -- Otherwise the restored debugger tabpage lingers as a husk and the `open`
+    -- below adds a second one next to it
+    close_tabpages(stale)
+
+    M.restore_state()
+
+    -- Must schedule to properly restore breakpoints
+    -- Otherwise might restore before the signs load
+    -- NOTE: restoring the actual breakpoints is done by another plugin
+    vim.schedule(function()
+        require("dap-view.actions").open()
+    end)
 end
 
 return M
