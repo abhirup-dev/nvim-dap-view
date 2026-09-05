@@ -1,5 +1,6 @@
 local state = require("dap-view.state")
 local globals = require("dap-view.globals")
+local mirror = require("dap-view.util.mirror")
 
 local M = {}
 
@@ -10,6 +11,8 @@ local M = {}
 ---@param opts vim.hl.range.Opts?
 M.hl_range = function(hl_group, start, finish, bufnr, opts)
     vim.hl.range(bufnr or state.bufnr, globals.NAMESPACE, "NvimDapView" .. hl_group, start, finish, opts)
+
+    mirror.notify()
 end
 
 ---The type highlight runs to the end of the line, so the ellipsis needs to sit above it
