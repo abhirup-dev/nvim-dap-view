@@ -72,6 +72,33 @@ end, {
         return require("dap-view.complete").complete_hosts(arg_lead)
     end,
 })
+---Host switches are user driven and can fail for environmental reasons (no
+---multiplexer, no socket), so report instead of throwing
+---@param fn fun()
+local protected = function(fn)
+    return function()
+        local ok, err = pcall(fn)
+        if not ok then
+            -- Strip the "file:line: " prefix, this is a user facing message
+            vim.notify((tostring(err):gsub("^.-:%d+: ", "")), vim.log.levels.ERROR)
+        end
+    end
+end
+
+command(
+    "DapViewUndock",
+    protected(function()
+        require("dap-view").undock()
+    end),
+    {}
+)
+command(
+    "DapViewDock",
+    protected(function()
+        require("dap-view").dock()
+    end),
+    {}
+)
 command("DapViewNavigate", function(opts)
     require("dap-view").navigate({ wrap = opts.bang, count = tonumber(opts.fargs[1]) or 1 })
 end, {
