@@ -71,7 +71,14 @@ end
 ---@param line integer 1 indexed
 M.show = function(line)
     if util.is_win_valid(state.hover_winnr) then
-        api.nvim_set_current_win(state.hover_winnr)
+        if require("dap-view.host").name() == "remote" then
+            -- There is nothing to focus: the float below is opened hidden. Put
+            -- the viewer's copy back in front instead
+            require("dap-view.host.remote").open_overlay(state.hover_bufnr, state.hover_winnr)
+        else
+            api.nvim_set_current_win(state.hover_winnr)
+        end
+
         return
     end
 
@@ -99,7 +106,19 @@ M.show = function(line)
 
     local anchor_y, anchor_x = require("dap-view.util.float").get_anchor(width)
 
-    local winnr = api.nvim_open_win(bufnr, true, {
+    -- Under the remote host the dap-view "window" is a hidden placeholder float
+    -- in the owner, so this float would be anchored against it and drawn over
+    -- the user's own editor. Hide it for the same reason the placeholder is
+    -- hidden, and let the copy the viewer draws be the one the user sees.
+    --
+    -- Not entering it also keeps the lifetime honest: `K` arrives through
+    -- `remote.on_key`, whose `nvim_win_call` restores the previous window
+    -- *without* firing autocmds (probed on 0.12.4), so the `BufLeave` cleanup
+    -- `hover.set_autocmds` installs would never run. `WinClosed` below does
+    -- that job instead, from whichever side asked for the close
+    local remote = require("dap-view.host").name() == "remote"
+
+    local winnr = api.nvim_open_win(bufnr, not remote, {
         border = setup.config.hover.border,
         relative = "cursor",
         row = anchor_y == "N" and 1 or 0,
@@ -108,15 +127,35 @@ M.show = function(line)
         width = width,
         height = height,
         title = name,
+        hide = remote or nil,
+        focusable = not remote,
     })
 
     state.hover_winnr = winnr
 
     require("dap-view.hover").set_win_options(winnr)
     require("dap-view.hover").set_buf_options(bufnr)
-    require("dap-view.hover").set_autocmds(bufnr)
 
     vim.wo[winnr][0].wrap = true
+
+    if remote then
+        require("dap-view.host.remote").open_overlay(bufnr, winnr)
+
+        api.nvim_create_autocmd("WinClosed", {
+            pattern = tostring(winnr),
+            once = true,
+            callback = function()
+                require("dap-view.host.remote").close_overlay()
+
+                pcall(api.nvim_buf_delete, bufnr, { force = true })
+
+                state.hover_winnr = nil
+                state.hover_bufnr = nil
+            end,
+        })
+    else
+        require("dap-view.hover").set_autocmds(bufnr)
+    end
 
     keymap(setup.config.keymaps.hover.quit, "<C-w>q", { buffer = bufnr, desc = "close" })
 end

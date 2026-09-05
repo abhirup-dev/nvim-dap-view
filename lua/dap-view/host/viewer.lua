@@ -132,6 +132,99 @@ api.nvim_create_autocmd("VimResized", {
     end,
 })
 
+--------------------------------------------------------------------------------
+-- Overlay
+--------------------------------------------------------------------------------
+
+---@type integer?
+local overlay_buf
+---@type integer?
+local overlay_win
+
+---Take the overlay down. Idempotent: both sides may ask for it, and the owner
+---always asks once its own float closes
+M.close_overlay = function()
+    if overlay_win and api.nvim_win_is_valid(overlay_win) then
+        pcall(api.nvim_win_close, overlay_win, true)
+    end
+
+    if overlay_buf and api.nvim_buf_is_valid(overlay_buf) then
+        pcall(api.nvim_buf_delete, overlay_buf, { force = true })
+    end
+
+    overlay_win = nil
+    overlay_buf = nil
+
+    if api.nvim_win_is_valid(win) then
+        pcall(api.nvim_set_current_win, win)
+    end
+end
+
+---@class dapview.ViewerOverlayOpts
+---@field width integer? As computed in the owner, clamped to this pane here
+---@field height integer?
+---@field title string|any[]? Passed through from the owner's float
+---@field border any? `hover.border`; a `--clean` viewer has no `winborder`, so
+---the overlay would otherwise blend into the mirrored text underneath
+
+---Second float over the mirror, showing a copy of a float the owner opened.
+---
+---Read only, and mapped only to close: the owner resolves every other key
+---through its line indexed state, and the overlay has no lines it owns
+---@param lines string[]
+---@param opts dapview.ViewerOverlayOpts?
+M.open_overlay = function(lines, opts)
+    M.close_overlay()
+
+    opts = opts or {}
+
+    local buf = api.nvim_create_buf(false, true)
+
+    vim.bo[buf].buftype = "nofile"
+    vim.bo[buf].swapfile = false
+    vim.bo[buf].bufhidden = "wipe"
+
+    api.nvim_buf_set_lines(buf, 0, -1, false, lines or {})
+
+    vim.bo[buf].modifiable = false
+
+    -- The owner sized its float against *its* screen, which is not this pane
+    local width = math.max(math.min(opts.width or 40, vim.o.columns - 4), 1)
+    local height = math.max(math.min(opts.height or 1, vim.o.lines - 4), 1)
+
+    local ok, result = pcall(api.nvim_open_win, buf, true, {
+        relative = "cursor",
+        row = 1,
+        col = 0,
+        width = width,
+        height = height,
+        border = opts.border or "single",
+        title = opts.title,
+        style = "minimal",
+    })
+
+    if not ok then
+        pcall(api.nvim_buf_delete, buf, { force = true })
+        return
+    end
+
+    overlay_buf = buf
+    overlay_win = result
+
+    vim.wo[overlay_win][0].wrap = true
+    vim.wo[overlay_win][0].cursorline = false
+
+    -- Closing here closes the owner's float too, so neither side outlives the
+    -- other. `q` is not among the forwarded keymaps, and a buffer local mapping
+    -- would shadow it anyway
+    for _, lhs in ipairs({ "q", "<Esc>" }) do
+        pcall(vim.keymap.set, "n", lhs, function()
+            M.close_overlay()
+            notify_owner("on_overlay_close", {})
+        end, { buffer = buf, nowait = true, desc = "dap-view remote: close overlay" })
+    end
+end
+
 ---@param opts dapview.ViewerAttachOpts
 ---@return table
 M.attach = function(opts)

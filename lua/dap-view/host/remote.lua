@@ -360,6 +360,59 @@ local schedule_flush = function()
 end
 
 --------------------------------------------------------------------------------
+-- Overlay
+--------------------------------------------------------------------------------
+
+---Mirror a float the owner just opened into the viewer, as a second float over
+---the mirrored buffer.
+---
+---Lines only, not a `flush`: the floats this is used for (`tree/value.lua`) are
+---written with `util.set_lines` alone and carry no extmarks, and their contents
+---never change while they are up
+---@param bufnr integer Buffer shown in the owner's float
+---@param winnr integer The owner's float
+M.open_overlay = function(bufnr, winnr)
+    if not chan or not M.is_open() or not util.is_buf_valid(bufnr) or not util.is_win_valid(winnr) then
+        return
+    end
+
+    local config = api.nvim_win_get_config(winnr)
+
+    pcall(vim.rpcnotify, chan, "nvim_exec_lua", "return _G.dapview_viewer.open_overlay(...)", {
+        api.nvim_buf_get_lines(bufnr, 0, -1, false),
+        {
+            width = config.width,
+            height = config.height,
+            title = config.title,
+            border = setup.config.hover.border,
+        },
+    })
+end
+
+---The owner's float went away, by whichever of its close paths
+M.close_overlay = function()
+    if not chan then
+        return
+    end
+
+    pcall(vim.rpcnotify, chan, "nvim_exec_lua", "return _G.dapview_viewer.close_overlay()", {})
+end
+
+---`q`/`<Esc>` in the viewer's overlay. Closing the owner's float is what runs
+---its `WinClosed` cleanup, which asks the viewer to close the overlay again;
+---that is idempotent on both sides.
+---
+---Not routed through `on_key`: that resolves `lhs` against the *mirrored*
+---buffer's keymaps, and `tree/value.lua` maps its quit key on the float's buffer
+M.on_overlay_close = function()
+    vim.schedule(function()
+        if util.is_win_valid(state.hover_winnr) then
+            pcall(api.nvim_win_close, state.hover_winnr, true)
+        end
+    end)
+end
+
+--------------------------------------------------------------------------------
 -- Lifecycle
 --------------------------------------------------------------------------------
 
@@ -500,6 +553,18 @@ M.close = function()
     mirror.on_render = nil
 
     stop_timers()
+
+    -- A float `tree/value.lua` opened for us is hidden and unfocusable: without
+    -- a viewer nobody can see it, and nobody could close it either. `hide` is
+    -- what tells ours apart from a visible hover the user may be reading, and
+    -- ours are exactly the ones carrying the `WinClosed` cleanup
+    if util.is_win_valid(state.hover_winnr) then
+        local ok, config = pcall(api.nvim_win_get_config, state.hover_winnr)
+
+        if ok and config.hide then
+            pcall(api.nvim_win_close, state.hover_winnr, true)
+        end
+    end
 
     if chan then
         pcall(vim.rpcnotify, chan, "nvim_command", "qa!")
