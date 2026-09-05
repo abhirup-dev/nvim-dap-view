@@ -44,7 +44,9 @@ local function load_tools()
     end
     loaded = true
 
-    -- Tool modules register themselves here as they land.
+    require("dap-mcp.tools.session")
+    require("dap-mcp.tools.control")
+    require("dap-mcp.tools.wait")
 end
 
 ---@param opts dapmcp.Config?
@@ -53,6 +55,7 @@ M.setup = function(opts)
     local resolved = config.setup(opts)
 
     load_tools()
+    require("dap-mcp.status").attach()
 
     return resolved
 end
