@@ -167,9 +167,29 @@ local M = {}
 ---@class dapview.HostSplitConfig
 ---@field restore_layout boolean Snapshot the window layout before opening and restore it after closing
 
+---@alias dapview.TabLayout "code-right"|"code-left"|"full"
+
+---@class dapview.HostTabConfig
+---@field layout dapview.TabLayout Where the code window sits relative to the dap-view window. "full" means no code window
+---@field follow_frame boolean On `stopped`, open the frame's source in the tab's code window
+---@field close_on_terminate boolean Close the tabpage when the session terminates
+
+---@class dapview.HostRemotePaneConfig
+---@field direction dapview.Position
+---@field size number
+
+---@class dapview.HostRemoteConfig
+---@field multiplexer "tmux"|"herdr"|"custom"
+---@field spawn? fun(sock: string): string Override the command used to spawn the viewer
+---@field pane dapview.HostRemotePaneConfig
+---@field nvim_args string[]
+---@field mirror_highlights boolean
+
 ---@class dapview.HostConfig
 ---@field default dapview.HostName Host that owns the dap-view window
 ---@field split dapview.HostSplitConfig
+---@field tab dapview.HostTabConfig
+---@field remote dapview.HostRemoteConfig
 
 ---@class (exact) dapview.ConfigStrict
 ---@field winbar dapview.WinbarConfig
@@ -356,6 +376,18 @@ M.config = {
         default = "split",
         split = {
             restore_layout = true,
+        },
+        tab = {
+            layout = "code-right",
+            follow_frame = true,
+            close_on_terminate = true,
+        },
+        remote = {
+            multiplexer = "tmux",
+            spawn = nil,
+            pane = { direction = "right", size = 0.35 },
+            nvim_args = { "--clean" },
+            mirror_highlights = true,
         },
     },
 }
