@@ -1,3 +1,5 @@
+local dap = require("dap")
+
 local state = require("dap-view.state")
 local setup = require("dap-view.setup")
 local util = require("dap-view.util")
@@ -75,6 +77,21 @@ M.hint = function(line)
                 depth
             )
         )
+    end
+end
+
+---Distinct from the "dap-view" id used by `dap-view.listeners`: reusing it would overwrite
+---the handlers registered there
+local SUBSCRIPTION_ID = "dap-view-tree-reroot"
+
+-- The re-root stack is a view over one session's variables, so it can't outlive it.
+-- Expansion state (`variable_path_is_expanded`) is deliberately kept across sessions
+local session_end = { "event_terminated", "event_exited", "disconnect" }
+
+for _, listener in ipairs(session_end) do
+    dap.listeners.after[listener][SUBSCRIPTION_ID] = function()
+        state.tree_root_stack = {}
+        hinted = false
     end
 end
 

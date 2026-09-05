@@ -10,6 +10,9 @@ local scroll = require("dap-view.console.scroll")
 local fmt = require("dap-view.util.fmt")
 local vt = require("dap-view.virtual-text")
 
+-- Registers its own session-end listeners under a distinct subscription id
+require("dap-view.tree.reroot")
+
 local SUBSCRIPTION_ID = "dap-view"
 
 dap.listeners.on_session[SUBSCRIPTION_ID] = function(_, new)
