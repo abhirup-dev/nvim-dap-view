@@ -4,7 +4,7 @@ local winbar = require("dap-view.options.winbar")
 local setup = require("dap-view.setup")
 local util = require("dap-view.util")
 local autocmd = require("dap-view.options.autocmd")
-local term = require("dap-view.console.view")
+local host = require("dap-view.host")
 local state = require("dap-view.state")
 local globals = require("dap-view.globals")
 local tables = require("dap-view.util.tables")
@@ -16,7 +16,7 @@ local api = vim.api
 
 ---@param hide_terminal? boolean
 M.toggle = function(hide_terminal)
-    if util.is_win_valid(state.winnr) then
+    if host.get().is_open() then
         M.close(hide_terminal)
     else
         M.open(hide_terminal)
@@ -29,39 +29,34 @@ M.close = function(hide_terminal)
         dap.repl.close({ mode = "toggle" })
     end
 
-    if util.is_win_valid(state.winnr) then
-        -- Avoid "E444: Cannot close last window"
-        pcall(api.nvim_win_close, state.winnr, true)
-    end
-
-    state.winnr = nil
+    host.get().close(hide_terminal)
 
     if util.is_buf_valid(state.bufnr) then
         api.nvim_buf_delete(state.bufnr, { force = true })
     end
 
     state.bufnr = nil
+end
 
-    -- Close leftover terminal (if left open in another tab)
-    -- Might not be considered leftover, though. Let the caller decide
-    if hide_terminal and state.last_term_winnr ~= state.term_winnr and util.is_win_valid(state.last_term_winnr) then
-        api.nvim_win_close(state.last_term_winnr, true)
-    end
+---Finish setting up a window a host has just created for `state.bufnr`
+---@param winnr integer
+M.attach_window = function(winnr)
+    assert(winnr ~= 0, "Failed to create nvim-dap-view window")
 
-    if hide_terminal then
-        term.hide_term_buf_win()
-    end
+    state.winnr = winnr
+
+    vim.w[state.winnr].dapview_win = true
+
+    require("dap-view.views.options").set_options()
+    require("dap-view.views.util").set_keymaps("base")
+
+    winbar.set_action_keymaps()
+    winbar.wrapped_action(state.current_section, true)
 end
 
 ---@param hide_terminal? boolean
 M.open = function(hide_terminal)
     M.close(hide_terminal)
-
-    -- Force closing leftover terminal when reopening, even when not hiding term explicitly
-    -- Prevents opening multiple terminal windows
-    if not hide_terminal and state.last_term_winnr ~= state.term_winnr and util.is_win_valid(state.last_term_winnr) then
-        api.nvim_win_close(state.last_term_winnr, true)
-    end
 
     local bufnr = api.nvim_create_buf(false, false)
 
@@ -79,80 +74,7 @@ M.open = function(hide_terminal)
 
     api.nvim_buf_set_name(bufnr, globals.MAIN_BUF_NAME)
 
-    local separate_term_win = not vim.tbl_contains(setup.config.winbar.sections, "console")
-    local term_winnr = separate_term_win and term.open_term_buf_win()
-
-    local is_term_win_valid = util.is_win_valid(term_winnr)
-
-    local windows_config = setup.config.windows
-    local term_config = windows_config.terminal
-
-    local position = windows_config.position
-    local win_pos = (type(position) == "function" and position(state.win_pos))
-        or (type(position) == "string" and position)
-
-    ---@cast win_pos dapview.Position
-
-    local term_position_ = term_config.position
-    local term_win_pos = (type(term_position_) == "function" and term_position_(win_pos))
-        or (type(term_position_) == "string" and term_position_)
-
-    ---@cast term_win_pos dapview.Position
-
-    local inv_term_position = util.inverted_directions[term_win_pos]
-
-    local anchor_win = windows_config.anchor and windows_config.anchor()
-    local is_anchor_win_valid = util.is_win_valid(anchor_win)
-    state.anchor_winnr = anchor_win
-
-    local is_vertical = win_pos == "above" or win_pos == "below"
-
-    local term_is_vertical = term_win_pos == "above" or term_win_pos == "below"
-
-    local is_win_valid = is_anchor_win_valid or is_term_win_valid
-
-    local shared_split = term_is_vertical == is_vertical
-
-    local winfix_setting = is_vertical and "winfixheight" or "winfixwidth"
-
-    -- Temporarily disable fixed size
-    -- If the window exists, it's using the space of both
-    -- Do not touch anchor because we don't own it
-    if is_term_win_valid and shared_split then
-        vim.wo[state.term_winnr][winfix_setting] = false
-    end
-
-    local height, width = require("dap-view.util.size").size()
-
-    state.og_height = height
-    state.og_width = width
-
-    local winnr = api.nvim_open_win(bufnr, false, {
-        split = is_win_valid and inv_term_position or win_pos,
-        win = is_anchor_win_valid and anchor_win or is_term_win_valid and term_winnr or -1,
-        height = height,
-        width = width,
-    })
-
-    -- Assign state only after calling size, for idempotency
-    state.win_pos = win_pos
-
-    -- Restore fixed size
-    if is_term_win_valid and shared_split then
-        vim.wo[state.term_winnr][winfix_setting] = true
-    end
-
-    assert(winnr ~= 0, "Failed to create nvim-dap-view window")
-
-    state.winnr = winnr
-
-    vim.w[state.winnr].dapview_win = true
-
-    require("dap-view.views.options").set_options()
-    require("dap-view.views.util").set_keymaps("base")
-
-    winbar.set_action_keymaps()
-    winbar.wrapped_action(state.current_section, true)
+    M.attach_window(host.get().open(bufnr, hide_terminal))
 
     -- Clean up states dap-view buffer is wiped out
     autocmd.quit_buf_autocmd(state.bufnr, function()

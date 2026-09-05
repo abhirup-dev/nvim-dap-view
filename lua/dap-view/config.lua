@@ -164,6 +164,13 @@ local M = {}
 ---@field suffix dapview.VirtualTextFormatter
 ---@field position dapview.VirtualTextPosition
 
+---@class dapview.HostSplitConfig
+---@field restore_layout boolean Snapshot the window layout before opening and restore it after closing
+
+---@class dapview.HostConfig
+---@field default dapview.HostName Host that owns the dap-view window
+---@field split dapview.HostSplitConfig
+
 ---@class (exact) dapview.ConfigStrict
 ---@field winbar dapview.WinbarConfig
 ---@field windows dapview.WindowsConfig
@@ -176,6 +183,7 @@ local M = {}
 ---@field switchbuf string|dapview.SwitchBufFun Control how to jump when selecting a breakpoint or a call in the stack
 ---@field auto_toggle boolean|"keep_terminal"|"open_term"|"open"
 ---@field follow_tab boolean|fun(adapter?: string): boolean Reopen dapview when switching tabs
+---@field host dapview.HostConfig Where the dap-view window lives
 
 ---@type dapview.ConfigStrict
 M.config = {
@@ -344,6 +352,12 @@ M.config = {
     switchbuf = "usetab,uselast",
     auto_toggle = false,
     follow_tab = false,
+    host = {
+        default = "split",
+        split = {
+            restore_layout = true,
+        },
+    },
 }
 
 return M
