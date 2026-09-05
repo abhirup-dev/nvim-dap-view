@@ -7,21 +7,33 @@ M.foldtext = function()
     local foldstart = vim.v.foldstart
     local foldend = vim.v.foldend
 
-    local lines = vim.api.nvim_buf_get_lines(0, foldstart - 1, foldend, false)
+    -- With `foldmethod=indent` a fold starts at the first *child*, so the node that owns the
+    -- fold is the line right above it. At the top of the buffer there is none, so fall back
+    -- to treating the fold's own first line as the head
+    local head_line = foldstart > 1 and foldstart - 1 or foldstart
 
-    local head = lines[1] or ""
+    local head = vim.api.nvim_buf_get_lines(0, head_line - 1, head_line, false)[1] or ""
 
     local indent = head:match("^\t*") or ""
     local body = head:sub(#indent + 1)
 
-    -- Everything up to the separator is the icon and the name
+    local icons = require("dap-view.setup").config.icons
+
+    for _, icon in ipairs({ icons.expanded, icons.collapsed }) do
+        if #icon > 0 and body:sub(1, #icon) == icon then
+            body = body:sub(#icon + 1)
+            break
+        end
+    end
+
+    -- Everything up to the separator is the name
     local name = body:match("^(.-) = ") or body
 
-    -- Only direct children, i.e. lines exactly one level deeper than the fold's first line
+    -- Only direct children, i.e. lines exactly one level deeper than the head
     local child_indent = #indent + 1
     local children = 0
-    for i = 2, #lines do
-        if #(lines[i]:match("^\t*") or "") == child_indent then
+    for _, line in ipairs(vim.api.nvim_buf_get_lines(0, foldstart - 1, foldend, false)) do
+        if #(line:match("^\t*") or "") == child_indent then
             children = children + 1
         end
     end
