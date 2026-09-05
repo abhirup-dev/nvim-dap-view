@@ -164,6 +164,13 @@ local M = {}
 ---@field suffix dapview.VirtualTextFormatter
 ---@field position dapview.VirtualTextPosition
 
+---@class dapview.TreeConfig
+---@field max_value_width integer|"auto"|false Clamp the value segment of a variable to this many display cells. `"auto"` uses the available window width minus the name column. `false` disables clamping.
+---@field ellipsis string Appended to a clamped value
+---@field fold boolean Enable `foldmethod=indent` in the nvim-dap-view window
+---@field fold_level integer Initial `foldlevel` (only relevant when `fold` is enabled)
+---@field reroot_depth integer|false Depth from which `:DapViewReroot` is hinted. `false` disables the hint
+
 ---@class (exact) dapview.ConfigStrict
 ---@field winbar dapview.WinbarConfig
 ---@field windows dapview.WindowsConfig
@@ -176,6 +183,7 @@ local M = {}
 ---@field switchbuf string|dapview.SwitchBufFun Control how to jump when selecting a breakpoint or a call in the stack
 ---@field auto_toggle boolean|"keep_terminal"|"open_term"|"open"
 ---@field follow_tab boolean|fun(adapter?: string): boolean Reopen dapview when switching tabs
+---@field tree dapview.TreeConfig Variable tree readability
 
 ---@type dapview.ConfigStrict
 M.config = {
@@ -344,6 +352,13 @@ M.config = {
     switchbuf = "usetab,uselast",
     auto_toggle = false,
     follow_tab = false,
+    tree = {
+        max_value_width = 60,
+        ellipsis = "…",
+        fold = true,
+        fold_level = 2,
+        reroot_depth = 6,
+    },
 }
 
 return M
