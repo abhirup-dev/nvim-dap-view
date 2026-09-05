@@ -40,8 +40,13 @@ local refresh_auto_width = function()
     rendered_width = width
 
     if state.current_section then
-        -- Reuse the normal render path, leaving the cursor where the user put it
-        require("dap-view.views").switch_to_view(state.current_section, true)
+        -- Reuse the normal render path, leaving the cursor where the user put it.
+        -- The scopes view fetches variables synchronously (`session:request` yields), so it
+        -- must run inside a coroutine, as upstream does in `refresher.lua`; on the main
+        -- thread the request returns nothing and the empty state overwrites the tree
+        coroutine.wrap(function()
+            require("dap-view.views").switch_to_view(state.current_section, true)
+        end)()
     end
 end
 
