@@ -65,6 +65,21 @@ local dapview_width = function()
     return math.floor(size_ < 1 and vim.go.columns * size_ or size_)
 end
 
+---The dap-view window inside `page`, found by the marker `attach_window` sets.
+---
+---`state.winnr` is not trustworthy on its own: upstream's `TabEnter` handler nils
+---it whenever the user visits a tabpage without a dap-view window, even though
+---ours is still sitting in the tabpage we own
+---@param page integer
+---@return integer?
+local find_win = function(page)
+    for _, winnr in ipairs(api.nvim_tabpage_list_wins(page)) do
+        if vim.w[winnr].dapview_win then
+            return winnr
+        end
+    end
+end
+
 ---The code window, when the layout has one and the host is open
 ---@return integer?
 local get_code_winnr = function()
@@ -153,6 +168,8 @@ M.close = function(hide_terminal)
     code_winnr = nil
 
     if target and api.nvim_tabpage_is_valid(target) then
+        local winnr = util.is_win_valid(state.winnr) and state.winnr or find_win(target)
+
         without_layout_autocmds(function()
             if #api.nvim_list_tabpages() > 1 then
                 if api.nvim_get_current_tabpage() == target and origin_tabpage then
@@ -164,9 +181,9 @@ M.close = function(hide_terminal)
 
                 -- `:tabclose` takes a range, not a count
                 pcall(vim.cmd.tabclose, { range = { api.nvim_tabpage_get_number(target) }, bang = true })
-            elseif util.is_win_valid(state.winnr) then
+            elseif util.is_win_valid(winnr) then
                 -- Only tabpage left: closing it would take Neovim down with it
-                pcall(api.nvim_win_close, state.winnr, true)
+                pcall(api.nvim_win_close, winnr, true)
             end
         end)
     end
@@ -183,7 +200,33 @@ M.close = function(hide_terminal)
 end
 
 M.is_open = function()
-    return (tabpage ~= nil and api.nvim_tabpage_is_valid(tabpage) and util.is_win_valid(state.winnr)) and true or false
+    if not M.is_active() then
+        return false
+    end
+
+    ---@cast tabpage integer
+
+    if util.is_win_valid(state.winnr) then
+        return true
+    end
+
+    -- `state.winnr` was nil'd from under us, but the window is still ours.
+    -- Repairing it here is what upstream's own `TabEnter` handler does with the
+    -- window it finds, and what makes `close` able to reach it again
+    local winnr = find_win(tabpage)
+
+    if winnr then
+        state.winnr = winnr
+        return true
+    end
+
+    return false
+end
+
+---We own the tabpage until we close it, whether or not a dap-view window is
+---currently tracked in it
+M.is_active = function()
+    return (tabpage ~= nil and api.nvim_tabpage_is_valid(tabpage)) and true or false
 end
 
 ---nvim-dap jumps to the stopped frame itself, from whatever window happens to be

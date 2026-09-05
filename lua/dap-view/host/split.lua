@@ -156,4 +156,22 @@ M.is_open = function()
     return util.is_win_valid(state.winnr) and true or false
 end
 
+---Our split can be in a tabpage the user is not looking at, in which case
+---upstream's `TabEnter` handler has already nil'd `state.winnr`. The window is
+---still ours, so find it again and put it back where `close` can reach it
+M.is_active = function()
+    if M.is_open() then
+        return true
+    end
+
+    local winnr = require("dap-view.util.window").fetch_window()
+
+    if winnr then
+        state.winnr = winnr
+        return true
+    end
+
+    return false
+end
+
 return M

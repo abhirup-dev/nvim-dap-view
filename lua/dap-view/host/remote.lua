@@ -46,6 +46,10 @@ local DEBOUNCE_MS = 30
 ---How often the viewer is checked for liveness
 local WATCHDOG_MS = 1000
 
+---How long the viewer gets to create its socket. A cold `nvim --clean` in a pane
+---the multiplexer still has to draw is comfortably slower than it sounds
+local SOCKET_WAIT_MS = 10000
+
 ---Base groups the viewer needs on top of every `NvimDapView*` one, because the
 ---rendered lines and the winbar link into them
 local BASE_HL_GROUPS = {
@@ -143,10 +147,15 @@ end
 
 ---@return integer
 local connect = function()
-    if not vim.wait(5000, function()
+    local listening = vim.wait(SOCKET_WAIT_MS, function()
         return sock ~= nil and vim.uv.fs_stat(sock) ~= nil
-    end, 50) then
-        error("Timed out waiting for the viewer socket: " .. tostring(sock))
+    end, 50)
+
+    if not listening then
+        local message = "The remote viewer did not come up within %ds (socket: %s). "
+            .. "The pane may still be starting; retry with :DapViewUndock"
+
+        error(message:format(SOCKET_WAIT_MS / 1000, tostring(sock)), 0)
     end
 
     local connected
@@ -164,7 +173,7 @@ local connect = function()
     end, 50)
 
     if not connected then
-        error("Could not connect to the viewer socket: " .. tostring(sock))
+        error("Could not connect to the viewer socket: " .. tostring(sock) .. ". Retry with :DapViewUndock", 0)
     end
 
     return connected
@@ -382,9 +391,16 @@ fallback = function()
 
     local previous = host.previous()
 
+    -- Tear ourselves down first. Nothing here can succeed any more, and leaving
+    -- the channel, the socket, the pane handle or the placeholder float behind
+    -- would keep the watchdog and every future flush aimed at a dead viewer
+    M.close()
+
     vim.notify("dap-view: remote viewer is gone, falling back to the '" .. previous .. "' host", vim.log.levels.WARN)
 
-    host.switch(previous)
+    -- `close` just dropped everything `is_active` looks at, so the reopen has to
+    -- be asked for explicitly
+    host.switch(previous, { reopen = true })
 end
 
 local start_watchdog = function()
@@ -519,6 +535,12 @@ M.is_open = function()
     end
 
     return not vim.tbl_isempty(api.nvim_get_chan_info(chan))
+end
+
+---A dead viewer is still ours to clean up: the channel, the socket file, the
+---pane handle and the placeholder float all outlive it
+M.is_active = function()
+    return (util.is_win_valid(placeholder) or chan ~= nil or handle ~= nil or sock ~= nil) and true or false
 end
 
 ---Live view of the remote host, for `:checkhealth dap-view`. Read only: the
