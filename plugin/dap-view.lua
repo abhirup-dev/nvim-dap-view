@@ -16,7 +16,7 @@ command("DapViewHover", function(opts)
         expr = table.concat(opts.fargs, " ")
     end
     require("dap-view").hover(expr, opts.bang)
-end, { bang = true, nargs = "*" })
+end, { bang = true, nargs = "*", range = true })
 command("DapViewToggle", function(opts)
     require("dap-view").toggle(opts.bang)
 end, { bang = true })
