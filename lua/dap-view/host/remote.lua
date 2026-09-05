@@ -521,6 +521,20 @@ M.is_open = function()
     return not vim.tbl_isempty(api.nvim_get_chan_info(chan))
 end
 
+---Live view of the remote host, for `:checkhealth dap-view`. Read only: the
+---fields below are module locals everything else in here mutates
+---@return { is_open: boolean, chan: integer?, sock: string?, handle: string?, width: integer?, height: integer? }
+M.status = function()
+    return {
+        is_open = M.is_open(),
+        chan = chan,
+        sock = sock,
+        handle = handle,
+        width = viewer and viewer.width or nil,
+        height = viewer and viewer.height or nil,
+    }
+end
+
 --------------------------------------------------------------------------------
 -- Action dispatch
 --------------------------------------------------------------------------------
