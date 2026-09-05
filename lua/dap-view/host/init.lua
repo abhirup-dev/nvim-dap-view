@@ -13,6 +13,11 @@ local M = {}
 ---@field open fun(bufnr: integer, hide_terminal?: boolean): integer Returns the window showing `bufnr`
 ---@field close fun(hide_terminal?: boolean)
 ---@field is_open fun(): boolean Is a dap-view window visible right now?
+---@field follows_tabs boolean Does the host's window live in whatever tabpage the
+---user is currently in? Only then may upstream's `TabEnter` handler retrack (and
+---nil) `state.winnr` from the current tabpage's contents. A host that parks its
+---window in a tabpage of its own, or in a float the user never switches away
+---from, keeps owning it while the user is elsewhere
 ---@field is_active fun(): boolean Does the host still own something (a tabpage, a
 ---pane, a channel, a window) that `close` has to tear down? A host can own plenty
 ---while `is_open` is false: upstream's `TabEnter` handler nils `state.winnr`
