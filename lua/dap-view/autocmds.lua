@@ -100,6 +100,10 @@ api.nvim_create_autocmd("CursorMoved", {
         -- The window may be invalid when switching tabs, given that now we defer the update when switching tabs
         if util.is_win_valid(state.winnr) then
             state.cur_pos[state.current_section] = api.nvim_win_get_cursor(state.winnr)
+
+            if state.current_section == "scopes" then
+                require("dap-view.tree.reroot").hint(state.cur_pos[state.current_section][1])
+            end
         end
     end,
 })
