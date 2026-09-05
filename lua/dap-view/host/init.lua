@@ -12,7 +12,12 @@ local M = {}
 ---@class dapview.Host
 ---@field open fun(bufnr: integer, hide_terminal?: boolean): integer Returns the window showing `bufnr`
 ---@field close fun(hide_terminal?: boolean)
----@field is_open fun(): boolean
+---@field is_open fun(): boolean Is a dap-view window visible right now?
+---@field is_active fun(): boolean Does the host still own something (a tabpage, a
+---pane, a channel, a window) that `close` has to tear down? A host can own plenty
+---while `is_open` is false: upstream's `TabEnter` handler nils `state.winnr`
+---whenever the user visits a tabpage without a dap-view window, and a remote
+---viewer that died leaves its channel, socket and placeholder behind
 
 ---@alias dapview.HostName "split"|"tab"|"remote"
 
@@ -72,18 +77,26 @@ M.previous = function()
 end
 
 ---Switch to another host, preserving `state.bufnr` (and therefore every view,
----keymap and cursor position already attached to it)
+---keymap and cursor position already attached to it).
+---
+---Ownership, not window validity, decides what happens: "no dap-view window is
+---visible" says nothing about whether the current host still owns a tabpage, a
+---pane or a channel that has to be torn down first.
 ---@param name string
-M.switch = function(name)
+---@param opts? {reopen?: boolean} `reopen` opens the target even though the
+---previous host owned nothing left to tear down. The remote fallback path needs
+---it, because it closes itself before switching
+M.switch = function(name, opts)
     -- Resolve first, so an unknown or unimplemented host doesn't close anything
     local target = M.resolve(name)
 
     local from = M.name()
     local previous = M.get()
+    local previous_last = last
     local bufnr = state.bufnr
-    local was_open = previous.is_open()
+    local active = previous.is_active()
 
-    if was_open then
+    if active then
         previous.close()
     end
 
@@ -93,11 +106,40 @@ M.switch = function(name)
 
     current = name
 
-    if was_open and util.is_buf_valid(bufnr) then
-        ---@cast bufnr integer
-        state.bufnr = bufnr
-        require("dap-view.actions").attach_window(target.open(bufnr))
+    -- Undocking a "closed" view during a live session should still bring it up
+    -- in the pane, so a dap session counts as a reason to open
+    local open = util.is_buf_valid(bufnr) and (active or (opts and opts.reopen) or require("dap").session() ~= nil)
+
+    if not open then
+        return
     end
+
+    ---@cast bufnr integer
+    state.bufnr = bufnr
+
+    local ok, err = pcall(function()
+        require("dap-view.actions").attach_window(target.open(bufnr))
+    end)
+
+    if ok then
+        return
+    end
+
+    -- Never leave `current` pointing at a host that failed to open
+    current = from
+    last = previous_last
+
+    if active then
+        -- Only put back what was actually there
+        pcall(function()
+            require("dap-view.actions").attach_window(previous.open(bufnr))
+        end)
+    end
+
+    vim.notify(
+        "dap-view: could not switch to the '" .. name .. "' host: " .. (tostring(err):gsub("^.-:%d+: ", "")),
+        vim.log.levels.ERROR
+    )
 end
 
 return M

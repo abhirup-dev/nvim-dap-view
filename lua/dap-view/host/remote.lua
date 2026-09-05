@@ -521,6 +521,12 @@ M.is_open = function()
     return not vim.tbl_isempty(api.nvim_get_chan_info(chan))
 end
 
+---A dead viewer is still ours to clean up: the channel, the socket file, the
+---pane handle and the placeholder float all outlive it
+M.is_active = function()
+    return (util.is_win_valid(placeholder) or chan ~= nil or handle ~= nil or sock ~= nil) and true or false
+end
+
 ---Live view of the remote host, for `:checkhealth dap-view`. Read only: the
 ---fields below are module locals everything else in here mutates
 ---@return { is_open: boolean, chan: integer?, sock: string?, handle: string?, width: integer?, height: integer? }
