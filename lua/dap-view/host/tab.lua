@@ -363,6 +363,12 @@ for _, listener in ipairs(close_on_terminate) do
             return
         end
 
+        -- Upstream's `auto_toggle = "open"` means "open on launch, never close";
+        -- an explicit never-close wins over this host's default
+        if setup.config.auto_toggle == "open" then
+            return
+        end
+
         -- Same reasoning as upstream's `auto_toggle`: don't tear the tabpage down
         -- while other sessions are still running
         if vim.tbl_count(dap.sessions()) > 1 then

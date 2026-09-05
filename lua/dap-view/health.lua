@@ -43,6 +43,13 @@ local check_config = function()
 
     health.info("hosts implemented: " .. table.concat(host.names, ", "))
 
+    if config.follow_tab and config.host.default ~= "split" then
+        health.warn(
+            "follow_tab has no effect with host.default = " .. config.host.default,
+            "Only the split host follows the user across tabpages; the tab and remote hosts own their window"
+        )
+    end
+
     local width = config.tree.max_value_width
 
     if width == "auto" then
