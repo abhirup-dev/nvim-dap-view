@@ -82,14 +82,18 @@ M.limit = function(name_col)
 
     if max_value_width == "auto" then
         local state = require("dap-view.state")
-        local winnr = require("dap-view.util").is_win_valid(state.winnr) and state.winnr or 0
+        local winnr = require("dap-view.util").is_win_valid(state.winnr) and state.winnr or api.nvim_get_current_win()
 
         local ok, win_width = pcall(api.nvim_win_get_width, winnr)
         if not ok then
             return false
         end
 
-        return math.max(win_width - name_col, MIN_AUTO_WIDTH)
+        -- `nvim_win_get_width` includes the sign, number and fold columns, which don't hold text
+        local wininfo = fn.getwininfo(winnr)[1]
+        local textoff = wininfo and wininfo.textoff or 0
+
+        return math.max(win_width - textoff - name_col, MIN_AUTO_WIDTH)
     end
 
     return max_value_width
