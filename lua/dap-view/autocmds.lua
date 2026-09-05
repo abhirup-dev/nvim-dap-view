@@ -9,6 +9,56 @@ local winbar = require("dap-view.options.winbar")
 
 local api = vim.api
 
+---The text width `tree.max_value_width = "auto"` was last measured against.
+---Reset whenever the view goes away, so a reopen measures the new window
+---@type integer?
+local rendered_width
+
+---Re-render the current section when the dap-view window's usable width changes.
+---
+---With `"auto"`, every clamped value in the buffer was measured against one
+---particular text width. That width moves when the user drags the split, and
+---also the moment a window that was never drawn gets drawn, since only then does
+---`getwininfo` report its real decorations. Neither is a render trigger by
+---itself, so the buffer would otherwise keep lines clamped to the wrong number
+local refresh_auto_width = function()
+    if not util.is_win_valid(state.winnr) or not util.is_buf_valid(state.bufnr) then
+        rendered_width = nil
+        return
+    end
+
+    if setup.config.tree.max_value_width ~= "auto" then
+        return
+    end
+
+    local width = require("dap-view.util.truncate").text_width(state.winnr)
+
+    if not width or width == rendered_width then
+        return
+    end
+
+    rendered_width = width
+
+    if state.current_section then
+        -- Reuse the normal render path, leaving the cursor where the user put it
+        require("dap-view.views").switch_to_view(state.current_section, true)
+    end
+end
+
+api.nvim_create_autocmd({ "WinResized", "BufWinEnter" }, {
+    callback = function(args)
+        -- `v:event.windows` is the cheap filter, not the real one: the width
+        -- comparison below is what decides. Absent or empty, just fall through
+        local windows = args.event == "WinResized" and vim.v.event.windows or nil
+
+        if windows and next(windows) and not vim.tbl_contains(windows, state.winnr) then
+            return
+        end
+
+        vim.schedule(refresh_auto_width)
+    end,
+})
+
 api.nvim_create_autocmd({ "WinClosed", "WinNew" }, {
     callback = function()
         vim.schedule(function()
@@ -26,6 +76,8 @@ api.nvim_create_autocmd({ "WinClosed", "WinNew" }, {
                     api.nvim_win_set_width(state.winnr, state.og_width)
                 end
             end
+
+            refresh_auto_width()
         end)
     end,
 })

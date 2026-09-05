@@ -70,6 +70,57 @@ M.name_col = function(depth, text)
     return depth * tabstop + M.display_width(text)
 end
 
+---`getwininfo().textoff` is 0 for a window that has never been drawn, which is
+---exactly the case for the first render after a stop: the tab host focuses the
+---code window, so the dap-view window is not current when the tree is first
+---built, and every line ends up measured against the full window width. Derive
+---the offset from the options instead, rounding up rather than down, so a stale
+---guess clamps early instead of overflowing.
+---@param winnr integer
+---@return integer
+M.textoff_from_options = function(winnr)
+    local wo = vim.wo[winnr][0]
+    local offset = 0
+
+    local signcolumn = wo.signcolumn
+
+    -- `number` merges the signs into the number column, so it costs nothing
+    if signcolumn ~= "no" and signcolumn ~= "number" then
+        -- `yes:N` and `auto:N` cap at N columns of two cells; a bare `yes` or
+        -- `auto` is one column
+        offset = offset + 2 * (tonumber(signcolumn:match(":(%d+)$")) or 1)
+    end
+
+    if wo.number or wo.relativenumber then
+        offset = offset + math.max(wo.numberwidth, 1)
+    end
+
+    offset = offset + (tonumber(wo.foldcolumn:match("(%d+)$")) or 0)
+
+    return offset
+end
+
+---Display cells `winnr` has for text: its width less the sign, number and fold
+---columns, which `nvim_win_get_width` includes but no text ever reaches
+---@param winnr integer
+---@return integer?
+M.text_width = function(winnr)
+    local ok, win_width = pcall(api.nvim_win_get_width, winnr)
+
+    if not ok then
+        return nil
+    end
+
+    local wininfo = fn.getwininfo(winnr)[1]
+    local textoff = wininfo and wininfo.textoff or 0
+
+    if textoff == 0 then
+        textoff = M.textoff_from_options(winnr)
+    end
+
+    return win_width - textoff
+end
+
 ---Resolve `tree.max_value_width` for a value starting at `name_col`
 ---@param name_col integer
 ---@return integer|false
@@ -84,16 +135,13 @@ M.limit = function(name_col)
         local state = require("dap-view.state")
         local winnr = require("dap-view.util").is_win_valid(state.winnr) and state.winnr or api.nvim_get_current_win()
 
-        local ok, win_width = pcall(api.nvim_win_get_width, winnr)
-        if not ok then
+        local text_width = M.text_width(winnr)
+
+        if not text_width then
             return false
         end
 
-        -- `nvim_win_get_width` includes the sign, number and fold columns, which don't hold text
-        local wininfo = fn.getwininfo(winnr)[1]
-        local textoff = wininfo and wininfo.textoff or 0
-
-        return math.max(win_width - textoff - name_col, MIN_AUTO_WIDTH)
+        return math.max(text_width - name_col, MIN_AUTO_WIDTH)
     end
 
     return max_value_width
