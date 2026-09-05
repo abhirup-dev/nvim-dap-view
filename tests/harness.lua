@@ -1,10 +1,5 @@
--- Shared headless harness for the dap-view parity suite.
---
--- Each case under `tests/cases` is a standalone script run as
--- `nvim --headless -u NONE -l tests/cases/<name>.lua`; `tests/run.lua` spawns
--- them one process each, because the plugin keeps module level state that a
--- single process could not reset between cases.
-local repo = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p:h:h")
+-- Shared headless harness for the dap-view parity audit.
+local repo = "/Users/abhirupdas/Codes/Personal/nvim-dap-view-parity"
 
 vim.opt.runtimepath:prepend(vim.fn.expand("~/.local/share/nvim/lazy/nvim-nio"))
 vim.opt.runtimepath:prepend(vim.fn.expand("~/.local/share/nvim/lazy/nvim-dap"))
@@ -43,7 +38,7 @@ function H.done()
     for _, f in ipairs(H.failures) do
         print(f)
     end
-    vim.cmd(H.failed > 0 and "cq!" or "qa!")
+    vim.cmd("qa!")
 end
 
 -- Drive the event loop for `ms`, since fake responses land via vim.schedule.
@@ -84,8 +79,9 @@ function H.new_fake_session(opts)
         stopped_thread_id = 1,
         initialized = true,
         capabilities = { supportsSetVariable = true, exceptionBreakpointFilters = {} },
-        config = { type = opts.adapter or "fake" },
+        config = { type = opts.adapter or "fake", name = "fake session" },
         parent = nil,
+        children = {},
         term_buf = opts.term_buf,
         threads = { [1] = { id = 1, name = "main", frames = fixtures.stackTrace.stackFrames } },
         current_frame = fixtures.stackTrace.stackFrames[1],
