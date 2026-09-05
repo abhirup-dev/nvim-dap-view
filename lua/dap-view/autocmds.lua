@@ -41,7 +41,9 @@ local refresh_auto_width = function()
 
     rendered_width = width
 
-    if state.current_section then
+    -- Only the tree views clamp values to the width; repl/console are terminal
+    -- buffers with no `<section>.view` module, and the rest do not truncate
+    if state.current_section == "scopes" or state.current_section == "watches" then
         -- Reuse the normal render path, leaving the cursor where the user put it.
         -- The scopes view fetches variables synchronously (`session:request` yields), so it
         -- must run inside a coroutine, as upstream does in `refresher.lua`; on the main
