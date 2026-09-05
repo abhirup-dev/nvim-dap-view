@@ -27,6 +27,21 @@ local api = vim.api
 ---reusing it here would silently unregister its handlers
 local SUBSCRIPTION_ID = "dap-view-host-tab"
 
+---The recorded size below is cleared on its own id: the handlers registered
+---under `SUBSCRIPTION_ID` are the `close_on_terminate` ones, and they run on a
+---narrower set of events
+local SIZE_SUBSCRIPTION_ID = "dap-view-host-tab-size"
+
+---What `close` recorded about the dap-view window, so `open` can put it back.
+---`state.og_width`/`og_height` are not this: they are the size the window was
+---*opened* at, which `autocmds.lua` compares against to decide whether the user
+---has since resized it by hand. This is that hand-picked size
+---@class dapview.HostTabSize
+---@field width integer
+---@field height integer
+---@field layout dapview.TabLayout Only restored into the layout it was taken from
+---@field has_term boolean Whether a terminal window shared the tabpage
+
 ---@type integer?
 local tabpage
 ---@type integer?
@@ -138,10 +153,12 @@ M.open = function(bufnr, _)
     else
         state.win_pos = layout == "code-right" and "left" or "right"
 
+        local recorded = state.host_tab_size
+
         winnr = api.nvim_open_win(bufnr, false, {
             split = state.win_pos,
             win = code_winnr,
-            width = dapview_width(),
+            width = (recorded and recorded.layout == layout and recorded.width) or dapview_width(),
         })
     end
 
@@ -157,6 +174,17 @@ M.open = function(bufnr, _)
         term.open_term_buf_win()
     end
 
+    -- After the terminal, which is what takes the height away in the first place
+    local recorded = state.host_tab_size
+
+    if
+        recorded
+        and recorded.layout == layout
+        and recorded.has_term == (util.is_win_valid(state.term_winnr) and true or false)
+    then
+        pcall(api.nvim_win_set_height, winnr, recorded.height)
+    end
+
     return winnr
 end
 
@@ -169,6 +197,20 @@ M.close = function(hide_terminal)
 
     if target and api.nvim_tabpage_is_valid(target) then
         local winnr = util.is_win_valid(state.winnr) and state.winnr or find_win(target)
+
+        -- Whatever size the user left the window at, so a `:DapViewUndock` /
+        -- `:DapViewDock` round trip does not snap back to the configured width.
+        -- "full" owns the whole tabpage, so it has nothing to preserve
+        local layout = setup.config.host.tab.layout
+
+        if util.is_win_valid(winnr) and layout ~= "full" then
+            state.host_tab_size = {
+                width = api.nvim_win_get_width(winnr),
+                height = api.nvim_win_get_height(winnr),
+                layout = layout,
+                has_term = util.is_win_valid(state.term_winnr) and true or false,
+            }
+        end
 
         without_layout_autocmds(function()
             if #api.nvim_list_tabpages() > 1 then
@@ -290,6 +332,14 @@ dap.listeners.after.scopes[SUBSCRIPTION_ID] = function(session)
     require("dap-view.views.util").jump_to_location(path, frame.line, nil, function()
         return code_win
     end)
+end
+
+---The recorded window size describes one session's layout, so it cannot outlive
+---it: same reasoning, and the same shape, as `tree/reroot.lua`'s re-root stack
+for _, listener in ipairs({ "event_terminated", "event_exited", "disconnect" }) do
+    dap.listeners.after[listener][SIZE_SUBSCRIPTION_ID] = function()
+        state.host_tab_size = nil
+    end
 end
 
 local close_on_terminate = { "event_terminated", "disconnect" }

@@ -38,6 +38,7 @@
 ---@field current_section? dapview.Section
 ---@field og_height? integer
 ---@field og_width? integer
+---@field host_tab_size? dapview.HostTabSize
 ---@field last_section? dapview.Section
 ---@field last_session_buf? integer
 ---@field exceptions_options table<string,dapview.ExceptionsOption[]>
