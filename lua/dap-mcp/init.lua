@@ -47,6 +47,9 @@ local function load_tools()
     require("dap-mcp.tools.session")
     require("dap-mcp.tools.control")
     require("dap-mcp.tools.wait")
+    require("dap-mcp.tools.breakpoints")
+    require("dap-mcp.tools.stack")
+    require("dap-mcp.tools.variables")
 end
 
 ---@param opts dapmcp.Config?
