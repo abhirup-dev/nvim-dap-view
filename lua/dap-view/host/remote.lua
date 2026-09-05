@@ -383,7 +383,7 @@ M.open_overlay = function(bufnr, winnr)
         {
             width = config.width,
             height = config.height,
-            title = config.title,
+            title = vim.b[bufnr].dapview_title or config.title,
             border = setup.config.hover.border,
         },
     })

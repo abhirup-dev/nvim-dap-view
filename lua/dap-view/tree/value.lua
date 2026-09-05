@@ -133,6 +133,10 @@ M.show = function(line)
 
     state.hover_winnr = winnr
 
+    -- Neovim drops a float's `title` when it has no border, so keep the name on
+    -- the buffer for the viewer overlay, which always draws one
+    vim.b[bufnr].dapview_title = name
+
     require("dap-view.hover").set_win_options(winnr)
     require("dap-view.hover").set_buf_options(bufnr)
 
