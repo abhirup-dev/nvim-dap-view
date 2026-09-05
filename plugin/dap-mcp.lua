@@ -32,21 +32,49 @@ local function call(name, json)
     end)
 end
 
+local function print_status()
+    local status = require("dap-mcp.sidecar").status()
+
+    local lines = {
+        ("running:   %s"):format(status.running),
+        ("url:       %s"):format(status.url or "-"),
+        ("pid:       %s"):format(status.pid or "-"),
+        ("binary:    %s"):format(status.binary),
+        ("autostart: %s"):format(status.autostart),
+    }
+    if status.last_error then
+        table.insert(lines, ("last error: %s"):format(status.last_error))
+    end
+
+    print(table.concat(lines, "\n"))
+end
+
+local ACTIONS = { "tools", "call", "start", "stop", "status" }
+
 vim.api.nvim_create_user_command("DapMcp", function(opts)
     local action = opts.fargs[1]
+    local sidecar = require("dap-mcp.sidecar")
 
     if action == "tools" then
         print_tools()
     elseif action == "call" then
         call(opts.fargs[2], table.concat(vim.list_slice(opts.fargs, 3), " "))
+    elseif action == "start" then
+        sidecar.start()
+    elseif action == "stop" then
+        if not sidecar.stop() then
+            vim.notify("dap-mcp: the sidecar is not running", vim.log.levels.WARN)
+        end
+    elseif action == "status" then
+        print_status()
     else
-        vim.notify("Usage: :DapMcp tools | :DapMcp call <tool> [json args]", vim.log.levels.ERROR)
+        vim.notify("Usage: :DapMcp start | stop | status | tools | call <tool> [json args]", vim.log.levels.ERROR)
     end
 end, {
     nargs = "*",
     complete = function(_, line)
         if line:match("^%s*DapMcp%s+%S*$") then
-            return { "tools", "call" }
+            return ACTIONS
         end
 
         if line:match("^%s*DapMcp%s+call%s+%S*$") then
@@ -57,5 +85,5 @@ end, {
 
         return {}
     end,
-    desc = "Inspect and manually drive the nvim-dap-mcp tool surface",
+    desc = "Drive the nvim-dap-mcp sidecar and tool surface",
 })

@@ -60,8 +60,15 @@ M.setup = function(opts)
 
     load_tools()
     require("dap-mcp.status").attach()
+    require("dap-mcp.sidecar").attach()
 
     return resolved
+end
+
+---Lifecycle for the Go sidecar: `start()`, `stop()`, `status()`. Also driven
+---by `:DapMcp start|stop|status`.
+M.sidecar = function()
+    return require("dap-mcp.sidecar")
 end
 
 ---Run a tool. See the contract at the top of this file.

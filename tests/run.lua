@@ -538,6 +538,58 @@ for _, name in ipairs(expected_tools) do
 end
 
 --------------------------------------------------------------------------------
+-- Sidecar lifecycle
+--
+-- The binary itself is never launched here; what is checked is the wiring
+-- around it -- path resolution, the status shape and the autostart modes.
+--------------------------------------------------------------------------------
+
+group("sidecar lifecycle")
+
+local sidecar = require("dap-mcp.sidecar")
+
+require("dap-mcp").setup({})
+ok(sidecar.binary():match("bin/nvim%-dap%-mcp$") ~= nil, "default binary path sits under the plugin's bin/")
+ok(sidecar.binary():sub(1, #repo) == repo, "default binary path is inside the plugin root")
+
+require("dap-mcp").setup({ sidecar = { bin = "/tmp/somewhere/nvim-dap-mcp" } })
+eq(sidecar.binary(), "/tmp/somewhere/nvim-dap-mcp", "sidecar.bin overrides the default path")
+
+local sidecar_status = sidecar.status()
+eq(sidecar_status.running, false, "the sidecar is not running before start()")
+eq(sidecar_status.pid, nil, "no pid before start()")
+eq(sidecar_status.url, nil, "no url before start()")
+eq(sidecar_status.autostart, "on_session", "status reports the configured autostart mode")
+
+-- A missing binary is reported, not raised: `:DapMcp start` must not throw in
+-- a repo where `make build` has not been run.
+eq(sidecar.start({ silent = true }), false, "start() refuses when the binary is missing")
+ok(sidecar.status().last_error ~= nil, "the missing binary is recorded as last_error")
+eq(sidecar.stop(), false, "stop() is a no-op when nothing is running")
+
+local dap = require("dap")
+local LISTENER_KEY = "dap-mcp.sidecar.autostart"
+
+require("dap-mcp").setup({ autostart = "on_session" })
+ok(dap.listeners.after.event_initialized[LISTENER_KEY] ~= nil, "autostart=on_session subscribes to event_initialized")
+
+require("dap-mcp").setup({ autostart = "on_session" })
+local subscriptions = 0
+for key in pairs(dap.listeners.after.event_initialized) do
+    if key == LISTENER_KEY then
+        subscriptions = subscriptions + 1
+    end
+end
+eq(subscriptions, 1, "a second setup() replaces its subscription instead of stacking one")
+
+require("dap-mcp").setup({ autostart = "never" })
+eq(
+    dap.listeners.after.event_initialized[LISTENER_KEY],
+    nil,
+    "autostart=never removes the event_initialized subscription"
+)
+
+--------------------------------------------------------------------------------
 
 print(("\n%d passed, %d failed"):format(passed, failed))
 

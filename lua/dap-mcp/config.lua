@@ -1,7 +1,7 @@
 ---Configuration for nvim-dap-mcp.
 ---
----`port`, `bind`, `token` and `autostart` are stored here for the Go sidecar
----(phase 5b) to read; nothing in the Lua core acts on them yet.
+---`port`, `bind`, `token`, `autostart` and `sidecar.bin` are read by
+---`dap-mcp.sidecar`, which starts the Go binary; the tool layer ignores them.
 local M = {}
 
 ---@class dapmcp.ResponseConfig
@@ -15,6 +15,9 @@ local M = {}
 ---@class dapmcp.UiConfig
 ---@field integrate_dap_view boolean Reuse dap-view's truncation and expose the `ui_*` tools
 
+---@class dapmcp.SidecarConfig
+---@field bin string? Path to the Go binary; nil means `<plugin root>/bin/nvim-dap-mcp`
+
 ---@class dapmcp.Config
 ---@field port integer
 ---@field bind string
@@ -23,6 +26,7 @@ local M = {}
 ---@field response dapmcp.ResponseConfig
 ---@field evaluate dapmcp.EvaluateConfig
 ---@field ui dapmcp.UiConfig
+---@field sidecar dapmcp.SidecarConfig
 
 ---@type dapmcp.Config
 M.defaults = {
@@ -40,6 +44,9 @@ M.defaults = {
     },
     ui = {
         integrate_dap_view = true,
+    },
+    sidecar = {
+        bin = nil,
     },
 }
 
@@ -69,6 +76,9 @@ local function validate(config)
 
     vim.validate("ui", config.ui, "table")
     vim.validate("ui.integrate_dap_view", config.ui.integrate_dap_view, "boolean")
+
+    vim.validate("sidecar", config.sidecar, "table")
+    vim.validate("sidecar.bin", config.sidecar.bin, "string", true)
 end
 
 ---@param opts dapmcp.Config?
