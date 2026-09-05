@@ -25,6 +25,7 @@ M.names = { "split", "tab", "remote" }
 ---@type table<string, string>
 local modules = {
     split = "dap-view.host.split",
+    tab = "dap-view.host.tab",
 }
 
 ---Live override set by `switch`. The configured default stays untouched
