@@ -332,6 +332,15 @@ dap.listeners.after.scopes[SUBSCRIPTION_ID] = function(session)
     require("dap-view.views.util").jump_to_location(path, frame.line, nil, function()
         return code_win
     end)
+
+    -- nvim-dap reveals the stopped line in the window *it* jumped (session.lua
+    -- `normal! zv`); this window is ours, so do the same, otherwise the frame
+    -- sits inside a closed fold and a visual selection spans the whole fold
+    if util.is_win_valid(code_win) then
+        api.nvim_win_call(code_win, function()
+            pcall(vim.cmd, "normal! zv")
+        end)
+    end
 end
 
 ---The recorded window size describes one session's layout, so it cannot outlive
