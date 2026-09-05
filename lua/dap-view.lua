@@ -88,4 +88,16 @@ M.switch_host = function(name)
     require("dap-view.host").switch(name)
 end
 
+---Move the view into a multiplexer pane
+M.undock = function()
+    M.switch_host("remote")
+end
+
+---Bring the view back into the host it was undocked from
+M.dock = function()
+    local host = require("dap-view.host")
+
+    host.switch(host.previous())
+end
+
 return M

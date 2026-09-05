@@ -176,15 +176,19 @@ local M = {}
 ---@field close_on_terminate boolean Close the tabpage when the session terminates
 
 ---@class dapview.HostRemotePaneConfig
----@field direction dapview.Position
----@field size number
+---@field kind "split"|"tab" A whole tab gives the viewer real space; a narrow split renders badly
+---@field direction "right"|"down"|"left"|"up" Only relevant for `kind = "split"`. herdr splits `right` and `down` only
+---@field size number Fraction of the parent when below 1, cells otherwise
+---@field label string Tab label, where the multiplexer has one
 
 ---@class dapview.HostRemoteConfig
----@field multiplexer "tmux"|"herdr"|"custom"
----@field spawn? fun(sock: string): string Override the command used to spawn the viewer
+---@field multiplexer dapview.MuxName
+---@field spawn? fun(cmd: string, opts: dapview.MuxSpawnOpts): string? Required by the `custom` multiplexer. Returns an opaque handle
+---@field close? fun(handle: string) Optional counterpart to `spawn`
 ---@field pane dapview.HostRemotePaneConfig
 ---@field nvim_args string[]
 ---@field mirror_highlights boolean
+---@field close_on_terminate boolean
 
 ---@class dapview.HostConfig
 ---@field default dapview.HostName Host that owns the dap-view window
@@ -394,11 +398,13 @@ M.config = {
             close_on_terminate = true,
         },
         remote = {
-            multiplexer = "tmux",
+            multiplexer = "herdr",
             spawn = nil,
-            pane = { direction = "right", size = 0.35 },
+            close = nil,
+            pane = { kind = "tab", direction = "right", size = 0.35, label = "dap-view" },
             nvim_args = { "--clean" },
             mirror_highlights = true,
+            close_on_terminate = true,
         },
     },
     tree = {

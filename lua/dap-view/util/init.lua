@@ -1,3 +1,5 @@
+local mirror = require("dap-view.util.mirror")
+
 local M = {}
 
 local api = vim.api
@@ -28,6 +30,8 @@ M.set_lines = function(bufnr, start, end_, strict_indexing, replacement)
     vim.bo[bufnr].modifiable = true
     api.nvim_buf_set_lines(bufnr, start, end_, strict_indexing, replacement)
     vim.bo[bufnr].modifiable = false
+
+    mirror.notify()
 end
 
 return M

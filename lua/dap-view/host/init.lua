@@ -16,21 +16,27 @@ local M = {}
 
 ---@alias dapview.HostName "split"|"tab"|"remote"
 
----Every host the configuration knows about, implemented or not
----@type dapview.HostName[]
-M.names = { "split", "tab", "remote" }
-
----Hosts that actually have an implementation. Anything in `names` but not here
----errors out as "not implemented"
 ---@type table<string, string>
 local modules = {
     split = "dap-view.host.split",
     tab = "dap-view.host.tab",
+    remote = "dap-view.host.remote",
 }
+
+---Every host the configuration knows about
+---@type dapview.HostName[]
+M.names = vim.tbl_keys(modules)
+
+table.sort(M.names)
 
 ---Live override set by `switch`. The configured default stays untouched
 ---@type dapview.HostName?
 local current
+
+---The host `switch` last moved away from. `:DapViewDock` docks back into it, and
+---the remote host falls back to it when its viewer dies
+---@type dapview.HostName?
+local last
 
 ---@return dapview.HostName
 M.name = function()
@@ -44,18 +50,25 @@ M.resolve = function(name)
         error("Unknown host: " .. tostring(name))
     end
 
-    local module = modules[name]
-
-    if not module then
-        error("Host '" .. name .. "' is not implemented")
-    end
-
-    return require(module)
+    return require(modules[name])
 end
 
 ---@return dapview.Host
 M.get = function()
     return M.resolve(M.name())
+end
+
+---The host to return to when undocking is undone. Never `remote`, so a dead
+---viewer can't fall back into another remote
+---@return dapview.HostName
+M.previous = function()
+    if last and last ~= "remote" then
+        return last
+    end
+
+    local default = setup.config.host.default
+
+    return default ~= "remote" and default or "split"
 end
 
 ---Switch to another host, preserving `state.bufnr` (and therefore every view,
@@ -65,12 +78,17 @@ M.switch = function(name)
     -- Resolve first, so an unknown or unimplemented host doesn't close anything
     local target = M.resolve(name)
 
+    local from = M.name()
     local previous = M.get()
     local bufnr = state.bufnr
     local was_open = previous.is_open()
 
     if was_open then
         previous.close()
+    end
+
+    if name ~= from then
+        last = from
     end
 
     current = name
