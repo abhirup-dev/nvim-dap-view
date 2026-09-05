@@ -35,6 +35,7 @@ M.show_help = function()
 ### Scopes
  `<CR>`  Expand or collapse a variable
     `s`  Set the value of a variable
+    `K`  Show the full value of a variable
    `[[`  Jump to parent
 ### Threads
  `<CR>`  Jump to a frame. Use `<C-w><CR>` to force a specific behavior.
@@ -52,6 +53,7 @@ M.show_help = function()
     `e`  Edit an expression
     `c`  Copy the value of an expression or variable
     `s`  Set the value of an expression or variable
+    `K`  Show the full value of an expression or variable
    `[[`  Jump to parent
 ### Exceptions
  `<CR>`  Toggle filter

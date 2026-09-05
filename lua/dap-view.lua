@@ -67,6 +67,17 @@ M.register_view = function(id, section)
     actions.register_view(id, section)
 end
 
+---Re-root the scopes tree at the variable under the cursor
+---@param line? integer
+M.reroot = function(line)
+    require("dap-view.tree.reroot").reroot(line)
+end
+
+---Pop one level off the scopes tree breadcrumb
+M.root_up = function()
+    require("dap-view.tree.reroot").root_up()
+end
+
 ---@param opts dapview.NavigateOpts
 M.navigate = function(opts)
     actions.navigate(opts)

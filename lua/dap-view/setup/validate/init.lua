@@ -15,6 +15,7 @@ function M.validate(config)
         auto_toggle = { config.auto_toggle, { "boolean", "string" } },
         follow_tab = { config.follow_tab, { "boolean", "function" } },
         host = { config.host, "table" },
+        tree = { config.tree, "table" },
     }, config)
 
     if
@@ -32,6 +33,7 @@ function M.validate(config)
     require("dap-view.setup.validate.virtual-text").validate(config.virtual_text)
     require("dap-view.setup.validate.render").validate(config.render)
     require("dap-view.setup.validate.host").validate(config.host)
+    require("dap-view.setup.validate.tree").validate(config.tree)
 end
 
 return M

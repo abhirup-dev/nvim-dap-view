@@ -134,6 +134,7 @@ local M = {}
 ---@field toggle dapview.Keymap
 ---@field jump_to_parent dapview.Keymap
 ---@field set_value dapview.Keymap
+---@field show_value dapview.Keymap Show the full, untruncated value in a float
 
 ---@class dapview.HoverKeymapsConfig : dapview.ScopesKeymapsConfig
 ---@field quit dapview.Keymap
@@ -190,6 +191,13 @@ local M = {}
 ---@field split dapview.HostSplitConfig
 ---@field tab dapview.HostTabConfig
 ---@field remote dapview.HostRemoteConfig
+---@class dapview.TreeConfig
+---@field max_value_width integer|"auto"|false Clamp the value segment of a variable to this many display cells. `"auto"` uses the available window width minus the name column. `false` disables clamping.
+---@field ellipsis string Appended to a clamped value
+---@field indent_width integer|false Buffer local `tabstop` for the view, i.e. how many cells one tree level takes. `false` leaves `tabstop` alone.
+---@field fold boolean Enable `foldmethod=indent` in the nvim-dap-view window
+---@field fold_level integer Initial `foldlevel` (only relevant when `fold` is enabled)
+---@field reroot_depth integer|false Depth from which `:DapViewReroot` is hinted. `false` disables the hint
 
 ---@class (exact) dapview.ConfigStrict
 ---@field winbar dapview.WinbarConfig
@@ -204,6 +212,7 @@ local M = {}
 ---@field auto_toggle boolean|"keep_terminal"|"open_term"|"open"
 ---@field follow_tab boolean|fun(adapter?: string): boolean Reopen dapview when switching tabs
 ---@field host dapview.HostConfig Where the dap-view window lives
+---@field tree dapview.TreeConfig Variable tree readability
 
 ---@type dapview.ConfigStrict
 M.config = {
@@ -254,11 +263,13 @@ M.config = {
             toggle = { "<CR>", "<2-LeftMouse>" },
             jump_to_parent = "[[",
             set_value = "s",
+            show_value = "K",
         },
         watches = {
             toggle = { "<CR>", "<2-LeftMouse>" },
             jump_to_parent = "[[",
             set_value = "s",
+            show_value = "K",
             copy_value = "c",
             delete_expression = "d",
             append_expression = "a",
@@ -389,6 +400,14 @@ M.config = {
             nvim_args = { "--clean" },
             mirror_highlights = true,
         },
+    },
+    tree = {
+        max_value_width = 60,
+        ellipsis = "…",
+        indent_width = 2,
+        fold = true,
+        fold_level = 2,
+        reroot_depth = 6,
     },
 }
 
