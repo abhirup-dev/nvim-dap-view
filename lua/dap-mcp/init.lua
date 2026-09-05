@@ -50,6 +50,7 @@ local function load_tools()
     require("dap-mcp.tools.breakpoints")
     require("dap-mcp.tools.stack")
     require("dap-mcp.tools.variables")
+    require("dap-mcp.tools.ui")
 end
 
 ---@param opts dapmcp.Config?
