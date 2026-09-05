@@ -1,5 +1,6 @@
 -- Shared headless harness for the dap-view parity audit.
-local repo = "/Users/abhirupdas/Codes/Personal/nvim-dap-view-parity"
+-- The checkout this file lives in, so the suite runs against the code next to it
+local repo = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p:h:h")
 
 vim.opt.runtimepath:prepend(vim.fn.expand("~/.local/share/nvim/lazy/nvim-nio"))
 vim.opt.runtimepath:prepend(vim.fn.expand("~/.local/share/nvim/lazy/nvim-dap"))
