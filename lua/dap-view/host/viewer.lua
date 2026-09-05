@@ -89,18 +89,55 @@ end
 ---@field background string?
 ---@field highlights table<string, vim.api.keyset.highlight>?
 
+---@type integer? RPC channel back to the owner, resolved on `attach`
+local owner
+
 local M = {
     buf = buf,
     win = win,
     ns = ns,
 }
 
+---Call `fn` in the owner, with `args` as its arguments. Custom RPC method names
+---are not dispatchable by Neovim (only API method names are), so every message
+---in this direction is an `nvim_exec_lua` with the payload passed as arguments,
+---never interpolated into the code
+---@param fn string
+---@param args any[]
+local notify_owner = function(fn, args)
+    if not owner then
+        return
+    end
+
+    pcall(vim.rpcnotify, owner, "nvim_exec_lua", "require('dap-view.host.remote')." .. fn .. "(...)", args)
+end
+
+---The pane changed size. The owner sizes its placeholder float from these
+---numbers, and width dependent rendering (`tree.max_value_width = "auto"`,
+---winbar labels) is measured against that float, so a resize the owner never
+---hears about leaves the pane rendering to a stale width.
+---
+---The *window* size, not `vim.o.columns`/`vim.o.lines`: the viewer's own chrome
+---(the cmdline row, and a statusline if one ever comes back) is not text the
+---owner may render into
+local report_size = function()
+    notify_owner("on_resize", { api.nvim_win_get_width(win), api.nvim_win_get_height(win) })
+end
+
+api.nvim_create_autocmd("VimResized", {
+    group = api.nvim_create_augroup("dap-view-viewer", { clear = true }),
+    callback = function()
+        -- `VimResized` runs before the windows are laid out again
+        vim.schedule(report_size)
+    end,
+})
+
 ---@param opts dapview.ViewerAttachOpts
 ---@return table
 M.attach = function(opts)
     opts = opts or {}
 
-    local owner = owner_chan()
+    owner = owner_chan()
 
     if opts.background then
         vim.o.background = opts.background
@@ -131,20 +168,7 @@ M.attach = function(opts)
     -- state, so the line number is the whole payload
     for _, lhs in ipairs(opts.keymaps or {}) do
         pcall(vim.keymap.set, "n", lhs, function()
-            if not owner then
-                return
-            end
-
-            -- Custom RPC method names are not dispatchable by Neovim (only API
-            -- method names are), so the notification is an `nvim_exec_lua` with
-            -- the payload passed as arguments, never interpolated into the code
-            pcall(
-                vim.rpcnotify,
-                owner,
-                "nvim_exec_lua",
-                "require('dap-view.host.remote').on_key(...)",
-                { lhs, vim.fn.line(".") }
-            )
+            notify_owner("on_key", { lhs, vim.fn.line(".") })
         end, { buffer = buf, nowait = true, desc = "dap-view remote: " .. lhs })
     end
 

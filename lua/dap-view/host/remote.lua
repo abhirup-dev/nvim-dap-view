@@ -564,6 +564,42 @@ end
 ---A keypress in the viewer. The viewer has no idea what it means; the owner
 ---places its cursor on `line` and runs whatever the dap-view buffer maps `lhs`
 ---to, exactly as if the user had pressed it in a local window
+---The viewer's pane changed size. The placeholder is what every width dependent
+---renderer measures against (`tree.max_value_width = "auto"`, winbar labels), so
+---it has to follow the pane, and the re-render has to be asked for: floats emit
+---no `WinResized` (probed on 0.12.4, hidden or not), which is why `autocmds.lua`
+---exports its refresh
+---@param width integer
+---@param height integer
+M.on_resize = function(width, height)
+    vim.schedule(function()
+        if not viewer then
+            return
+        end
+
+        width = math.max(width or 0, 1)
+        height = math.max(height or 0, 1)
+
+        if width == viewer.width and height == viewer.height then
+            return
+        end
+
+        viewer.width = width
+        viewer.height = height
+
+        if util.is_win_valid(placeholder) then
+            -- A partial config keeps `hide`, `focusable` and the position
+            pcall(api.nvim_win_set_config, placeholder, { width = width, height = height })
+        end
+
+        require("dap-view.autocmds").refresh_auto_width()
+
+        -- The winbar and anything else laid out against the window width are
+        -- stale even when the tree is not
+        schedule_flush()
+    end)
+end
+
 ---@param lhs string
 ---@param line integer
 M.on_key = function(lhs, line)

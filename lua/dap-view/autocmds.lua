@@ -9,6 +9,8 @@ local winbar = require("dap-view.options.winbar")
 
 local api = vim.api
 
+local M = {}
+
 ---The text width `tree.max_value_width = "auto"` was last measured against.
 ---Reset whenever the view goes away, so a reopen measures the new window
 ---@type integer?
@@ -164,3 +166,11 @@ api.nvim_create_autocmd("CursorMoved", {
         end
     end,
 })
+
+---Floats emit no `WinResized` (probed on 0.12.4: neither hidden nor visible ones
+---do), so the remote host, whose dap-view window *is* a float, has to drive the
+---re-render itself after resizing its placeholder. Exported rather than
+---duplicated so `rendered_width` stays a single piece of bookkeeping
+M.refresh_auto_width = refresh_auto_width
+
+return M
