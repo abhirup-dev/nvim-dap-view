@@ -324,9 +324,21 @@ dap.listeners.after.scopes[SUBSCRIPTION_ID] = function(session)
 
     local frame_bufnr = vim.uri_to_bufnr(vim.uri_from_fname(path))
 
+    -- nvim-dap reveals the stopped line in the window *it* jumped (session.lua
+    -- `normal! zv`); this window is ours, so do the same on every path,
+    -- otherwise the frame sits inside a closed fold and a visual selection
+    -- spans the whole fold
+    local function reveal()
+        if util.is_win_valid(code_win) then
+            api.nvim_win_call(code_win, function()
+                pcall(vim.cmd, "normal! zv")
+            end)
+        end
+    end
+
     if api.nvim_get_current_tabpage() == tabpage and api.nvim_win_get_buf(code_win) == frame_bufnr then
         -- nvim-dap already landed where we want it
-        return
+        return reveal()
     end
 
     api.nvim_set_current_tabpage(tabpage)
@@ -337,14 +349,7 @@ dap.listeners.after.scopes[SUBSCRIPTION_ID] = function(session)
         return code_win
     end)
 
-    -- nvim-dap reveals the stopped line in the window *it* jumped (session.lua
-    -- `normal! zv`); this window is ours, so do the same, otherwise the frame
-    -- sits inside a closed fold and a visual selection spans the whole fold
-    if util.is_win_valid(code_win) then
-        api.nvim_win_call(code_win, function()
-            pcall(vim.cmd, "normal! zv")
-        end)
-    end
+    reveal()
 end
 
 ---The recorded window size describes one session's layout, so it cannot outlive
