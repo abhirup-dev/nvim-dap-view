@@ -18,6 +18,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -29,6 +30,9 @@ import (
 const PingTool = "neovim_ping"
 
 const pingSchema = `{"type":"object","properties":{},"required":[],"additionalProperties":false}`
+
+// syncTimeout bounds the registry re-read that runs on every tools/list.
+const syncTimeout = 5 * time.Second
 
 // Options configures the HTTP surface.
 type Options struct {
@@ -46,9 +50,10 @@ type Server struct {
 	log    *slog.Logger
 	opts   Options
 
-	// registered is the tool set currently advertised, so a failed refresh can
-	// keep serving the last good one.
-	registered map[string]bool
+	// registered is the tool set currently advertised, keyed by name and
+	// fingerprinted by description plus schema. A failed refresh keeps serving
+	// it, and an unchanged registry re-registers nothing -- see Sync.
+	registered map[string]string
 }
 
 // New builds the server and performs the first registry sync. A sync failure
@@ -65,7 +70,7 @@ func New(ctx context.Context, bridge *nvimbridge.Bridge, opts Options) (*Server,
 		bridge:     bridge,
 		log:        opts.Log,
 		opts:       opts,
-		registered: map[string]bool{},
+		registered: map[string]string{},
 	}
 
 	s.mcp = mcp.NewServer(&mcp.Implementation{
@@ -86,7 +91,13 @@ func New(ctx context.Context, bridge *nvimbridge.Bridge, opts Options) (*Server,
 	s.mcp.AddReceivingMiddleware(func(next mcp.MethodHandler) mcp.MethodHandler {
 		return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
 			if method == "tools/list" {
-				if err := s.Sync(ctx); err != nil {
+				// Bounded: a Neovim sitting in a modal prompt must not hang
+				// the client's discovery call.
+				refresh, cancel := context.WithTimeout(ctx, syncTimeout)
+				err := s.Sync(refresh)
+				cancel()
+
+				if err != nil {
 					// Best effort: keep serving the last good set rather than
 					// failing the client's discovery call.
 					s.log.Warn("could not refresh the tool registry", "error", err)
@@ -104,6 +115,12 @@ func New(ctx context.Context, bridge *nvimbridge.Bridge, opts Options) (*Server,
 }
 
 // Sync reads the Lua registry and reconciles the advertised tool set with it.
+//
+// It compares before it writes. `Server.AddTool` assumes every call is a
+// change and fires `notifications/tools/list_changed`, so re-registering all
+// 21 tools on each `tools/list` would send a client that refetches on that
+// notification straight back into `tools/list`. In the steady state -- the
+// registry has not changed -- this touches the MCP server not at all.
 func (s *Server) Sync(ctx context.Context) error {
 	tools, err := s.bridge.Tools(ctx)
 	if err != nil {
@@ -113,11 +130,12 @@ func (s *Server) Sync(ctx context.Context) error {
 		return fmt.Errorf("the dap-mcp tool registry is empty")
 	}
 
-	seen := map[string]bool{PingTool: true}
+	// neovim_ping is ours, registered once at startup, and never part of what
+	// the Lua side advertises.
+	seen := map[string]string{PingTool: s.registered[PingTool]}
 
 	for _, tool := range tools {
 		tool := tool
-		seen[tool.Name] = true
 
 		schema := tool.InputSchema
 		if len(schema) == 0 {
@@ -125,6 +143,13 @@ func (s *Server) Sync(ctx context.Context) error {
 			// registry bug worth reporting rather than crashing over.
 			s.log.Warn("tool has no input schema, using the empty object", "tool", tool.Name)
 			schema = json.RawMessage(pingSchema)
+		}
+
+		fingerprint := tool.Description + "\x00" + string(schema)
+		seen[tool.Name] = fingerprint
+
+		if s.registered[tool.Name] == fingerprint {
+			continue
 		}
 
 		s.mcp.AddTool(&mcp.Tool{
@@ -137,7 +162,7 @@ func (s *Server) Sync(ctx context.Context) error {
 	// Drop tools the Lua side no longer advertises.
 	var stale []string
 	for name := range s.registered {
-		if !seen[name] {
+		if _, ok := seen[name]; !ok {
 			stale = append(stale, name)
 		}
 	}
@@ -204,7 +229,7 @@ func (s *Server) addPing() {
 
 		return jsonResult(info), nil
 	})
-	s.registered[PingTool] = true
+	s.registered[PingTool] = pingSchema
 }
 
 func jsonResult(payload json.RawMessage) *mcp.CallToolResult {

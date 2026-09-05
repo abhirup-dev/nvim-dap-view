@@ -1,21 +1,8 @@
 {
-  "$comment": [
-    "Registration for Claude Code (.mcp.json) and anything else that speaks",
-    "streamable HTTP. Start Neovim first: the sidecar is its child, and with no",
-    "editor there is nothing to connect to.",
-    "",
-    "Drop the `headers` block when `token` is nil in setup() -- that is the",
-    "default, and the endpoint binds to loopback only, so there is nothing to",
-    "authenticate against. Keep it, with a matching `token = \"...\"` in setup(),",
-    "if you bind anywhere else."
-  ],
   "mcpServers": {
     "nvim-dap": {
       "type": "http",
-      "url": "http://127.0.0.1:28911/mcp",
-      "headers": {
-        "Authorization": "Bearer replace-with-the-token-from-setup"
-      }
+      "url": "http://127.0.0.1:28911/mcp"
     }
   }
 }

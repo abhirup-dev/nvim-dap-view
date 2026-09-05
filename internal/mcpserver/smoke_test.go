@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -52,6 +53,12 @@ func serve(t *testing.T, token string) string {
 func connect(t *testing.T, url, token string) *mcp.ClientSession {
 	t.Helper()
 
+	return connectWith(t, url, token, nil)
+}
+
+func connectWith(t *testing.T, url, token string, opts *mcp.ClientOptions) *mcp.ClientSession {
+	t.Helper()
+
 	transport := &mcp.StreamableClientTransport{Endpoint: url}
 	if token != "" {
 		transport.HTTPClient = &http.Client{Transport: bearer{token: token}}
@@ -60,7 +67,7 @@ func connect(t *testing.T, url, token string) *mcp.ClientSession {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	t.Cleanup(cancel)
 
-	client := mcp.NewClient(&mcp.Implementation{Name: "smoke", Version: "0"}, nil)
+	client := mcp.NewClient(&mcp.Implementation{Name: "smoke", Version: "0"}, opts)
 
 	session, err := client.Connect(ctx, transport, nil)
 	if err != nil {
@@ -149,6 +156,35 @@ func TestToolErrorIsNotATransportError(t *testing.T) {
 	}
 	if !strings.Contains(text(result), "no_session") {
 		t.Errorf("error text does not carry the stable code: %s", text(result))
+	}
+}
+
+// Every tools/list re-reads the Lua registry. If that re-registered the tools
+// unconditionally, each one would fire notifications/tools/list_changed, and a
+// client that refetches on that notification -- Claude Code does -- would spin.
+// An unchanged registry must be silent.
+func TestRefreshDoesNotNotify(t *testing.T) {
+	var notifications atomic.Int64
+
+	session := connectWith(t, serve(t, ""), "", &mcp.ClientOptions{
+		ToolListChangedHandler: func(context.Context, *mcp.ToolListChangedRequest) {
+			notifications.Add(1)
+		},
+	})
+
+	ctx := context.Background()
+	for range 3 {
+		if _, err := session.ListTools(ctx, nil); err != nil {
+			t.Fatalf("tools/list: %v", err)
+		}
+	}
+
+	// The notification travels on the standalone SSE stream, so give it a
+	// moment to arrive before concluding it never will.
+	time.Sleep(250 * time.Millisecond)
+
+	if n := notifications.Load(); n != 0 {
+		t.Errorf("three tools/list calls produced %d list_changed notifications, want 0", n)
 	}
 }
 

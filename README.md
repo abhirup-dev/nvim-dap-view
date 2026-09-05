@@ -68,7 +68,7 @@ you change `bind` away from loopback — the sidecar logs a warning if you don't
 
 ## Register with a client
 
-See `examples/mcp.json`. For Claude Code, `.mcp.json`:
+`examples/mcp.json` is ready to copy into `.mcp.json` for Claude Code:
 
 ```json
 {
@@ -76,6 +76,13 @@ See `examples/mcp.json`. For Claude Code, `.mcp.json`:
     "nvim-dap": { "type": "http", "url": "http://127.0.0.1:28911/mcp" }
   }
 }
+```
+
+Start Neovim first — the sidecar is its child, and with no editor there is
+nothing to connect to. If you set a `token`, add the header:
+
+```json
+"headers": { "Authorization": "Bearer <the token from setup()>" }
 ```
 
 `skills/nvim-dap-mcp/SKILL.md` is a companion skill worth installing alongside
