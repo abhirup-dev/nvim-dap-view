@@ -241,6 +241,10 @@ M.close = function(hide_terminal)
     end
 end
 
+---We park the window in a tabpage of our own, so it stays ours while the user
+---visits any other tabpage
+M.follows_tabs = false
+
 M.is_open = function()
     if not M.is_active() then
         return false

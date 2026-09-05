@@ -93,6 +93,17 @@ api.nvim_create_autocmd({ "WinClosed", "WinNew" }, {
 
 api.nvim_create_autocmd("TabEnter", {
     callback = function()
+        -- Everything below retracks the dap-view window from the *current*
+        -- tabpage's contents, and nils `state.winnr` when it isn't there. That
+        -- is right for a split the user carries around with them, and wrong for
+        -- a host that parks its window elsewhere: under the tab host, simply
+        -- visiting another tabpage would drop `state.winnr` and with it
+        -- `jump_to_view`, `show_view`, `navigate`, `add_expr`'s view switch and
+        -- every listener that refreshes a section on `stopped`
+        if not require("dap-view.host").get().follows_tabs then
+            return
+        end
+
         local session = dap.session()
         local adapter = session and session.config.type
 

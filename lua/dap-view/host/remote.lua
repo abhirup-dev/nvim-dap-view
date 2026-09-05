@@ -594,6 +594,9 @@ end
 
 ---Channel liveness is the whole story: `nvim_get_chan_info` empties out as soon
 ---as the peer is gone, without a round trip
+---The placeholder is a never drawn float; the user's tabpage is irrelevant to it
+M.follows_tabs = false
+
 M.is_open = function()
     if not chan or not util.is_win_valid(placeholder) then
         return false

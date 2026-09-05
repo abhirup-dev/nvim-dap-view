@@ -152,6 +152,10 @@ M.close = function(hide_terminal)
     restore_snapshot()
 end
 
+---Upstream's layout: our split is in the tabpage the user is looking at, and
+---`follow_tab` moves it along with them
+M.follows_tabs = true
+
 M.is_open = function()
     return util.is_win_valid(state.winnr) and true or false
 end
