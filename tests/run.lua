@@ -516,6 +516,33 @@ for _, event in ipairs({ "event_stopped", "event_terminated", "event_exited" }) 
 end
 eq(#surviving, 0, "a timeout unregisters every wait listener", vim.inspect(surviving))
 
+-- Program exit: `exited` fires while the fake session still exists (nvim-dap tears it
+-- down afterwards), so the wait must not report a finished program as "running".
+fake.stopped_thread_id = nil
+local exiting = dapmcp.call("wait_for_pause", { timeout_ms = 5000 })
+ok(exiting.ok and exiting.result.pending == true, "wait_for_pause pends before program exit")
+local exit_key
+for key, _ in pairs(dap.listeners.after.event_exited) do
+    if key:match("^dap%-mcp%.wait%.") then
+        exit_key = key
+    end
+end
+ok(exit_key ~= nil, "an exited listener is registered")
+dap.listeners.after.event_exited[exit_key](fake, {})
+local exited
+vim.wait(2000, function()
+    local polled = dispatch.poll(exiting.result.ticket)
+    if polled.ok and type(polled.result) == "table" and polled.result.pending then
+        return false
+    end
+    exited = polled
+    return true
+end, 5)
+eq(exited.result.event, "exited", "exit resolves the wait with event=exited")
+eq(exited.result.state, "terminated", "a program that exited is reported as terminated, not running")
+eq(exited.result.timed_out, false, "and is not a timeout")
+require("dap-mcp.status").reset()
+
 fake.stopped_thread_id = 1
 
 group("every tool's output is JSON encodable")

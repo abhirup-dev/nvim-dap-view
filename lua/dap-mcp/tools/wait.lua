@@ -90,6 +90,11 @@ registry.register({
         local event = coroutine.yield()
 
         local snapshot = status.compose()
+        if event == "terminated" or event == "exited" then
+            -- Listener order across subscription ids is undefined: the status module may
+            -- not have observed the same event yet, so pin the terminal state here
+            snapshot = { state = "terminated", stack = {} }
+        end
         snapshot.event = event
         snapshot.timed_out = event == "timeout"
 

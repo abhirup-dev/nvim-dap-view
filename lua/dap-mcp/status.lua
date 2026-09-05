@@ -187,7 +187,9 @@ M.compose = function()
     local thread_id = session.stopped_thread_id
     if not thread_id then
         return {
-            state = "running",
+            -- `exited`/`terminated` arrive before nvim-dap drops the session object, so a
+            -- session that still exists but has already ended is reported as terminated
+            state = last.terminated and "terminated" or "running",
             stack = {},
         }
     end
