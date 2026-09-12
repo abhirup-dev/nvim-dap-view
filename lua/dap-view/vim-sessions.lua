@@ -162,16 +162,20 @@ M.load_session_hook = function()
         api.nvim_buf_delete(buf, { force = true })
     end
 
-    -- Otherwise the restored debugger tabpage lingers as a husk and the `open`
-    -- below adds a second one next to it
-    close_tabpages(stale)
-
     M.restore_state()
 
     -- Must schedule to properly restore breakpoints
     -- Otherwise might restore before the signs load
     -- NOTE: restoring the actual breakpoints is done by another plugin
+    --
+    -- The tabpages must wait for the schedule too: `SessionLoadPost` is fired by
+    -- `doautoall`, and closing a tabpage from inside it is refused with an error
+    -- that Neovim (0.12.4) then re-throws forever, wedging the editor
     vim.schedule(function()
+        -- Otherwise the restored debugger tabpage lingers as a husk and the
+        -- `open` below adds a second one next to it
+        close_tabpages(stale)
+
         require("dap-view.actions").open()
     end)
 end
