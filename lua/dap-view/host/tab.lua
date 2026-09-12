@@ -1,5 +1,6 @@
 local dap = require("dap")
 
+local layout_util = require("dap-view.util.layout")
 local setup = require("dap-view.setup")
 local state = require("dap-view.state")
 local term = require("dap-view.console.view")
@@ -41,6 +42,12 @@ local SIZE_SUBSCRIPTION_ID = "dap-view-host-tab-size"
 ---@field height integer
 ---@field layout dapview.TabLayout Only restored into the layout it was taken from
 ---@field has_term boolean Whether a terminal window shared the tabpage
+
+---The terminal window a bang-less `close` moved into the user's own tabpage,
+---together with the sizes that tabpage had before the window took rows from it
+---@class dapview.RelocatedTerm
+---@field winnr integer
+---@field snapshot dapview.LayoutSnapshot?
 
 ---@type integer?
 local tabpage
@@ -155,6 +162,31 @@ local relocate_term_win = function(page, bufnr, height)
     return winnr
 end
 
+---Take the relocated terminal down and hand the rows it occupied back to the
+---windows they came from.
+---
+---Neovim gives every row a closed window frees to a single sibling, so a
+---`:DapViewClose` / `:DapViewOpen` round trip would otherwise leave the user's
+---own tabpage with a layout it never had: a baseline of
+---`1resize 14|2resize 13|3resize 8` comes back as `1resize 9|2resize 9|3resize 18`.
+---
+---Idempotent, and never an error: the record is dropped either way
+local drop_relocated_term = function()
+    local record = state.relocated_term
+
+    state.relocated_term = nil
+
+    if not record then
+        return
+    end
+
+    if util.is_win_valid(record.winnr) then
+        pcall(api.nvim_win_close, record.winnr, true)
+    end
+
+    layout_util.restore(record.snapshot)
+end
+
 ---The code window, when the layout has one and the host is open
 ---@return integer?
 local get_code_winnr = function()
@@ -174,6 +206,11 @@ M.open = function(bufnr, _)
     origin_tabpage = api.nvim_get_current_tabpage()
 
     without_layout_autocmds(function()
+        -- Before `tabnew`, while the tabpage the terminal was relocated into is
+        -- still the current one and still has no tabline above it: that is the
+        -- state `close` measured its sizes in
+        drop_relocated_term()
+
         vim.cmd.tabnew()
 
         tabpage = api.nvim_get_current_tabpage()
@@ -262,6 +299,14 @@ end
 
 ---@param hide_terminal? boolean
 M.close = function(hide_terminal)
+    -- `:DapViewClose!` after a bang-less `:DapViewClose`: we own no tabpage any
+    -- more, so the branch below returns early and never reaches
+    -- `hide_term_buf_win` -- but the terminal the previous close relocated into
+    -- the user's own tabpage is exactly what the bang asks us to hide
+    if hide_terminal then
+        without_layout_autocmds(drop_relocated_term)
+    end
+
     local target = tabpage
     local origin = origin_tabpage
 
@@ -338,7 +383,17 @@ M.close = function(hide_terminal)
                     local page = (origin and api.nvim_tabpage_is_valid(origin) and origin)
                         or api.nvim_get_current_tabpage()
 
+                    -- Taken with the debugger tabpage already gone, which is
+                    -- also the state `open` restores in (it drops the relocated
+                    -- window before its own `tabnew`). Row budgets differ by the
+                    -- tabline, so the two have to agree on it
+                    local snapshot = layout_util.snapshot(page)
+
                     surviving = relocate_term_win(page, term_bufnr, term_height)
+
+                    if surviving then
+                        state.relocated_term = { winnr = surviving, snapshot = snapshot }
+                    end
                 end
             elseif util.is_win_valid(winnr) then
                 -- Only tabpage left: closing it would take Neovim down with it
