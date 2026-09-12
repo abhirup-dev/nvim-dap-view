@@ -39,6 +39,9 @@
 ---@field og_height? integer
 ---@field og_width? integer
 ---@field host_tab_size? dapview.HostTabSize
+---@field relocated_term? dapview.RelocatedTerm The terminal window the tab host
+---moved into the user's own tabpage on a bang-less close, and the layout to hand
+---back once it goes away again
 ---@field last_section? dapview.Section
 ---@field last_session_buf? integer
 ---@field exceptions_options table<string,dapview.ExceptionsOption[]>

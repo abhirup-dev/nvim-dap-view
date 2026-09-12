@@ -34,6 +34,45 @@ end
 
 H.group("close(false) / host=" .. host_name)
 local origin = vim.api.nvim_get_current_tabpage()
+
+---`winrestcmd()` is tabpage local, so it has to be read from inside `origin`,
+---which is not the current tabpage while the tab host owns one of its own
+---@return string
+local origin_restcmd = function()
+    local out
+
+    vim.api.nvim_win_call(vim.api.nvim_tabpage_get_win(origin), function()
+        out = vim.fn.winrestcmd()
+    end)
+
+    return out
+end
+
+---The layout the whole open / close / reopen / close round trip has to give the
+---user back. Three windows at deliberately unequal heights: with equal ones,
+---Neovim's own "hand every freed row to one window" behaviour would be
+---indistinguishable from a correct restore.
+---
+---Read, and compared, with no debugger tabpage up: the tabline costs the origin
+---tabpage a row, so the two ends of the comparison have to agree on whether one
+---is there
+---@type string?
+local baseline
+
+if host_name == "tab" then
+    vim.cmd("split")
+    vim.cmd("split")
+    -- Sized against the real screen (headless `-u NONE` gives 24 lines, and
+    -- `vim.o.lines` cannot grow it without a UI attached): three windows plus
+    -- their status lines and the command line have 20 rows between them. An
+    -- over-subscribed layout is one Neovim normalises the first time anything
+    -- perturbs it, and a baseline like that would fail the comparison below
+    -- however faithfully the host restores
+    vim.cmd("1resize 8 | 2resize 7")
+
+    baseline = origin_restcmd()
+end
+
 require("dap-view").open()
 H.pump(200)
 H.ok(state.term_winnr ~= nil and vim.api.nvim_win_is_valid(state.term_winnr), "terminal window opened")
@@ -56,6 +95,11 @@ if host_name == "tab" then
     H.eq(vim.api.nvim_win_get_tabpage(state.term_winnr), origin, "terminal moved to the origin tabpage")
     local h = vim.api.nvim_win_get_height(state.term_winnr)
     H.ok(h >= 1 and h <= cap, ("relocated height %d is within 1..%d (40%% of the tabpage)"):format(h, cap))
+    H.ok(
+        origin_restcmd() ~= baseline,
+        "the relocated terminal took rows from the origin layout",
+        "the assertion after the reopen is only meaningful if this differs"
+    )
 else
     -- Upstream: the split host never closed the terminal window in the first
     -- place, so it is still exactly where `open_term_buf_win` put it
@@ -82,6 +126,7 @@ H.ok(vim.api.nvim_buf_is_valid(term_buf), "terminal buffer survives")
 H.ok(not state.term_winnr or not vim.api.nvim_win_is_valid(state.term_winnr), "no terminal window is tracked")
 if host_name == "tab" then
     H.eq(#vim.api.nvim_list_tabpages(), 1, "tab host tore its tabpage down")
+    H.eq(origin_restcmd(), baseline, "the origin tabpage layout is back byte for byte")
 end
 
 H.done()

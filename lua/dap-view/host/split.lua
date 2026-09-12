@@ -1,3 +1,4 @@
+local layout = require("dap-view.util.layout")
 local setup = require("dap-view.setup")
 local state = require("dap-view.state")
 local term = require("dap-view.console.view")
@@ -10,33 +11,21 @@ local M = {}
 
 local api = vim.api
 
----@type {tabpage: integer, layout: any, restcmd: string}?
+---@type dapview.LayoutSnapshot?
 local snapshot
 
 local take_snapshot = function()
-    snapshot = nil
-
-    if not setup.config.host.split.restore_layout then
-        return
-    end
-
-    snapshot = {
-        tabpage = api.nvim_get_current_tabpage(),
-        layout = vim.fn.winlayout(),
-        restcmd = vim.fn.winrestcmd(),
-    }
+    snapshot = setup.config.host.split.restore_layout and layout.snapshot() or nil
 end
 
 ---Restore the window sizes captured before opening.
 ---
----`winlayout()` and `winrestcmd()` are both relative to the current tabpage, and
----`winrestcmd()` addresses windows by their (tabpage local) number. Replaying it
----is therefore only safe once the layout tree is identical to the snapshot again,
----which is exactly what we check. `winlayout()` carries no sizes, so the check
----never makes the restore redundant.
+---`dapview.LayoutSnapshot` documents when replaying `winrestcmd()` is safe; on
+---top of that, our split lives in the user's own tabpage, so we only put sizes
+---back while they are still looking at it.
 ---
 ---When the terminal window is deliberately left open (`hide_terminal` is falsy)
----the tree legitimately differs and we skip the restore.
+---the tree legitimately differs and `layout.restore` skips.
 local restore_snapshot = function()
     local snap = snapshot
     snapshot = nil
@@ -45,11 +34,7 @@ local restore_snapshot = function()
         return
     end
 
-    if not vim.deep_equal(vim.fn.winlayout(), snap.layout) then
-        return
-    end
-
-    pcall(vim.cmd, snap.restcmd)
+    layout.restore(snap)
 end
 
 ---@param bufnr integer

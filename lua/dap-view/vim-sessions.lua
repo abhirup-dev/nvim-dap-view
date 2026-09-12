@@ -13,7 +13,12 @@ local SESSION_VARIABLES = {
     section = "DapviewSection",
     expr_count = "DapviewExprCount",
     watches = "DapviewWatches",
+    tabpage = "DapviewTabpage",
 }
+
+---The tab host keeps `tabpage` up to date while it owns one; nothing else here
+---writes it, and `load_session_hook` is what consumes it
+M.SESSION_VARIABLES = SESSION_VARIABLES
 
 M.save_state = function()
     vim.g[SESSION_VARIABLES["section"]] = state.current_section
@@ -100,6 +105,26 @@ local close_tabpages = function(pages)
     pcall(api.nvim_set_current_tabpage, target)
 end
 
+---The tabpage the tab host marked before the session was written, if the restore
+---brought the marker back and it still resolves to something.
+---
+---Session files address tabpages by number, so the value is an index into the
+---restored tabpage list rather than a handle. Always consumed, even when it is
+---not ours to act on: a marker left over from a session written under the tab
+---host must not outlive this restore under another one
+---@return integer?
+local marked_tabpage = function()
+    local number = vim.g[SESSION_VARIABLES["tabpage"]]
+
+    vim.g[SESSION_VARIABLES["tabpage"]] = nil
+
+    if type(number) ~= "number" or not require("dap-view.host").get().owns_tabpage then
+        return
+    end
+
+    return api.nvim_list_tabpages()[number]
+end
+
 M.load_session_hook = function()
     ---Buffers the restore brought back that we have to drop: the filetype
     ---information for the REPL may have been lost, and likewise for the terminal
@@ -114,13 +139,24 @@ M.load_session_hook = function()
         end
     end
 
-    if #doomed == 0 then
+    -- The buffer rule alone is not enough to notice a restored debugger: with a
+    -- 'sessionoptions' of `buffers,curdir,tabpages,winsize,help,globals,skiprtp,
+    -- folds`, `:mksession` writes none of the buffers above -- `buffers` only
+    -- saves *listed* ones, and all of ours are unlisted -- so `doomed` comes out
+    -- empty even though the tabpage came back, husk and all
+    local marked = marked_tabpage()
+
+    if #doomed == 0 and not marked then
         return
     end
 
     -- Computed before the deletion: once the buffers are gone, their windows show
     -- a fresh empty buffer instead and nothing points back at the debugger
     local stale = stale_tabpages(doomed)
+
+    if marked and not vim.tbl_contains(stale, marked) then
+        table.insert(stale, marked)
+    end
 
     for _, buf in ipairs(doomed) do
         api.nvim_buf_delete(buf, { force = true })
