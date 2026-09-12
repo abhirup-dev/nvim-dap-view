@@ -56,6 +56,60 @@ local code_winnr
 ---@type integer?
 local origin_tabpage
 
+---The marker that tells `SessionLoadPost` which restored tabpage was ours.
+---
+---`:mksession` has no other way to record the debugger: dap-view://main,
+---dap-repl and dap-terminal are all unlisted, so `sessionoptions+=buffers` skips
+---every one of them, and unless one happens to be showing in a window the saved
+---layout does not name them either. A global is the mechanism upstream already
+---relies on for `g:DapviewSection`, and rides along on `sessionoptions+=globals`
+local MARKER = require("dap-view.vim-sessions").SESSION_VARIABLES.tabpage
+
+---The augroup keeping `MARKER` honest while we own a tabpage
+---@type integer?
+local marker_augroup
+
+---Session files address tabpages by number, and ours moves whenever a tabpage
+---before it is opened, closed or dragged. Cheap enough to run on every tabpage
+---switch, which is what stands in for the `TabMoved` Neovim does not have
+---(probed on 0.12.4: `TabNew`, `TabNewEntered`, `TabEnter`, `TabLeave`,
+---`TabClosedPre` and `TabClosed` are the whole set)
+local mark_tabpage = function()
+    if not M.is_active() then
+        return
+    end
+
+    ---@cast tabpage integer
+
+    vim.g[MARKER] = api.nvim_tabpage_get_number(tabpage)
+end
+
+local unmark_tabpage = function()
+    if marker_augroup then
+        pcall(api.nvim_del_augroup_by_id, marker_augroup)
+
+        marker_augroup = nil
+    end
+
+    vim.g[MARKER] = nil
+end
+
+---Mark the tabpage we just took, and keep the number up to date for as long as
+---it is ours. Our own `tabnew`/`tabclose` run under `without_layout_autocmds`,
+---which is why `open` and `close` also set and clear the marker by hand
+local watch_tabpage = function()
+    unmark_tabpage()
+
+    marker_augroup = api.nvim_create_augroup("dap-view-host-tab-marker", { clear = true })
+
+    api.nvim_create_autocmd({ "TabNew", "TabClosed", "TabEnter" }, {
+        group = marker_augroup,
+        callback = mark_tabpage,
+    })
+
+    mark_tabpage()
+end
+
 ---Run `fn` with the autocmds that react to layout changes muted.
 ---
 ---`tabnew`/`tabclose` would otherwise fire dap-view's own `TabEnter` handler in
@@ -283,6 +337,10 @@ M.open = function(bufnr, _)
         term.open_term_buf_win()
     end
 
+    -- The tabpage exists and is ours: leave the breadcrumb a restored session
+    -- needs to recognise it
+    watch_tabpage()
+
     -- After the terminal, which is what takes the height away in the first place
     local recorded = state.host_tab_size
 
@@ -313,6 +371,8 @@ M.close = function(hide_terminal)
     tabpage = nil
     code_winnr = nil
     origin_tabpage = nil
+
+    unmark_tabpage()
 
     ---The terminal window that outlives this `close`, if any
     ---@type integer?

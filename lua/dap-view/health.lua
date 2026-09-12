@@ -50,6 +50,20 @@ local check_config = function()
         )
     end
 
+    if config.host.default == "tab" then
+        local sessionoptions = vim.split(vim.o.sessionoptions, ",", { plain = true, trimempty = true })
+
+        if vim.tbl_contains(sessionoptions, "globals") then
+            health.ok("'sessionoptions' contains 'globals', so a restored session can find the debugger tabpage")
+        else
+            health.info(
+                "'sessionoptions' does not contain 'globals': the tab host marks its tabpage in g:DapviewTabpage, and "
+                    .. "without it a restored session falls back to looking for a dap buffer -- which :mksession only "
+                    .. "records when one happens to be showing in a window, since they are all unlisted"
+            )
+        end
+    end
+
     local width = config.tree.max_value_width
 
     if width == "auto" then
