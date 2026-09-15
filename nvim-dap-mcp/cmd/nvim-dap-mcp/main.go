@@ -23,8 +23,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/abhirup-dev/nvim-dap-mcp/internal/mcpserver"
-	"github.com/abhirup-dev/nvim-dap-mcp/internal/nvimbridge"
+	"github.com/abhirup-dev/nvim-dap-view/nvim-dap-mcp/internal/mcpserver"
+	"github.com/abhirup-dev/nvim-dap-view/nvim-dap-mcp/internal/nvimbridge"
 )
 
 // shutdownGrace bounds the wait for in-flight requests. A `wait_for_pause` can

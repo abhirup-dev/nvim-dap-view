@@ -21,11 +21,15 @@ The Go sidecar authors nothing. It reads the tool list and JSON schemas from
 
 ## Install
 
-The sidecar is a Go binary and has to be built. With lazy.nvim:
+This plugin lives in the `nvim-dap-mcp/` subdirectory of the
+`abhirup-dev/nvim-dap-view` repository, alongside the debugger UI it integrates
+with. lazy.nvim cannot install a plugin from a subdirectory of a remote repo, so
+point it at a local checkout:
 
 ```lua
 {
   "abhirup-dev/nvim-dap-mcp",
+  dir = vim.fn.expand("~/Codes/Personal/nvim-dap-view/nvim-dap-mcp"),
   dependencies = { "mfussenegger/nvim-dap" },
   build = "make build",
   opts = {},

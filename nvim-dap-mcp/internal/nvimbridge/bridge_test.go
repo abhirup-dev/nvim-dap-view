@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/abhirup-dev/nvim-dap-mcp/internal/nvimbridge"
-	"github.com/abhirup-dev/nvim-dap-mcp/internal/testnvim"
+	"github.com/abhirup-dev/nvim-dap-view/nvim-dap-mcp/internal/nvimbridge"
+	"github.com/abhirup-dev/nvim-dap-view/nvim-dap-mcp/internal/testnvim"
 )
 
 // toolCount is the size of the phase 5a registry. It is asserted rather than

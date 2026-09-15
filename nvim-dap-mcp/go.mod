@@ -1,4 +1,4 @@
-module github.com/abhirup-dev/nvim-dap-mcp
+module github.com/abhirup-dev/nvim-dap-view/nvim-dap-mcp
 
 go 1.25.0
 

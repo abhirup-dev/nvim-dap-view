@@ -14,9 +14,9 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/abhirup-dev/nvim-dap-mcp/internal/mcpserver"
-	"github.com/abhirup-dev/nvim-dap-mcp/internal/nvimbridge"
-	"github.com/abhirup-dev/nvim-dap-mcp/internal/testnvim"
+	"github.com/abhirup-dev/nvim-dap-view/nvim-dap-mcp/internal/mcpserver"
+	"github.com/abhirup-dev/nvim-dap-view/nvim-dap-mcp/internal/nvimbridge"
+	"github.com/abhirup-dev/nvim-dap-view/nvim-dap-mcp/internal/testnvim"
 )
 
 // toolCount is the phase 5a registry plus neovim_ping.

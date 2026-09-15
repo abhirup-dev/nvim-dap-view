@@ -22,7 +22,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/abhirup-dev/nvim-dap-mcp/internal/nvimbridge"
+	"github.com/abhirup-dev/nvim-dap-view/nvim-dap-mcp/internal/nvimbridge"
 )
 
 // PingTool is the one tool implemented in Go. It does not go through
