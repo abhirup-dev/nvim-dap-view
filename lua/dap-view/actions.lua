@@ -86,6 +86,26 @@ M.open = function(hide_terminal)
 end
 
 ---@param expr? string
+---@return string?
+local function get_hover_expr(expr)
+    if expr then
+        return expr
+    end
+
+    local in_variables_tree = api.nvim_get_current_win() == state.winnr
+        and (state.current_section == "scopes" or state.current_section == "watches")
+
+    if in_variables_tree then
+        local line = api.nvim_win_get_cursor(state.winnr)[1]
+        local path = state.line_to_variable_path[line]
+
+        return path and state.variable_path_to_evaluate_name[path]
+    end
+
+    return require("dap-view.util.exprs").get_current_expr()
+end
+
+---@param expr? string
 ---@param enter? boolean
 ---@param opts? dapview.EvaluateOpts
 M.hover = function(expr, enter, opts)
@@ -94,7 +114,12 @@ M.hover = function(expr, enter, opts)
         return
     end
 
-    state.hover = expr or require("dap-view.util.exprs").get_current_expr()
+    state.hover = get_hover_expr(expr)
+
+    if not state.hover then
+        vim.notify("No expression available for this tree node")
+        return
+    end
 
     coroutine.wrap(function()
         local has_session = require("dap").session()

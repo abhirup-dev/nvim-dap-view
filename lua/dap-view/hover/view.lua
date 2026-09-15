@@ -167,6 +167,11 @@ M.show = function(bufnr)
 
             height = height + 1
         end
+    else
+        local message = "No result returned by the debug adapter"
+        canvas.contents[#canvas.contents + 1] = message
+        width = fn.strdisplaywidth(message)
+        height = height + 1
     end
 
     util.set_lines(bufnr, 0, height, false, canvas.contents)
