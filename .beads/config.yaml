@@ -28,13 +28,9 @@
 # Use 'bd export --events' to trigger manually regardless of this setting.
 # events-export: false
 
-# Multi-repo configuration (experimental - bd-307)
-# Allows hydrating from multiple repositories and routing writes to the correct database
-# repos:
-#   primary: "."  # Primary repo (where this database lives)
-#   additional:   # Additional repos to hydrate from (read-only)
-#     - ~/beads-planning  # Personal planning repo
-#     - ~/work-planning   # Work planning repo
+# Multi-repo configuration (experimental - bd-307) is deliberately absent:
+# bd 1.2.2 materialised the commented ~/beads-planning example from its own
+# template into live routing, which made this repo's store read-only.
 
 # Dolt-native backup (periodic backup for off-machine recovery)
 # This is full database backup only. Cross-machine sync uses Dolt remotes.
@@ -69,3 +65,5 @@ sync.remote: "git+ssh://git@github-me/abhirup-dev/nvim-dap-view.git"
 export:
     auto: true
     git-add: true
+routing:
+    mode: maintainer
