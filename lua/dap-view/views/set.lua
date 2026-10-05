@@ -56,6 +56,10 @@ end
 ---@param evaluate_name string?
 ---@param variable_path string?
 M.set_value = function(parent_reference, variable_name, value, evaluate_name, variable_path)
+    if parent_reference and parent_reference < 0 then
+        vim.notify("Decoded and raw preview nodes are read-only; edit the original variable")
+        return
+    end
     -- From the protocol:
     --
     -- "If a debug adapter implements both `setExpression` and `setVariable`,

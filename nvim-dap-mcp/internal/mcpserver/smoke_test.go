@@ -19,8 +19,8 @@ import (
 	"github.com/abhirup-dev/nvim-dap-view/nvim-dap-mcp/internal/testnvim"
 )
 
-// toolCount is the phase 5a registry plus neovim_ping.
-const toolCount = 21 + 1
+// toolCount is the registry including decoder profiles plus neovim_ping.
+const toolCount = 23 + 1
 
 // serve stands up the whole stack -- headless nvim, bridge, MCP server, HTTP
 // listener -- and returns the endpoint URL.

@@ -13,7 +13,10 @@ M.set_value = function(line)
     local redraw = false
 
     if variable_path then
-        local variable_value = state.variable_path_to_value[variable_path]
+        local variable_value = require("dap-view.decoders").original_value(
+            state.variable_path_to_reference[variable_path],
+            state.variable_path_to_value[variable_path]
+        )
         local parent_reference = state.variable_path_to_parent_reference[variable_path]
         local variable_name = state.variable_path_to_name[variable_path]
         local evaluate_name = state.variable_path_to_evaluate_name[variable_path]

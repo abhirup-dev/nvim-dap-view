@@ -7,6 +7,7 @@ M.setup = function(config)
     M.config = vim.tbl_deep_extend("force", M.config, config or {})
 
     require("dap-view.setup.validate").validate(M.config)
+    require("dap-view.decoders").setup(M.config.decoders)
 end
 
 return M

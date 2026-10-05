@@ -204,6 +204,7 @@ local M = {}
 ---@field reroot_depth integer|false Depth from which `:DapViewReroot` is hinted. `false` disables the hint
 
 ---@class (exact) dapview.ConfigStrict
+---@field decoders? table Owner-side value decoder profiles; see docs/value-decoders.md
 ---@field winbar dapview.WinbarConfig
 ---@field windows dapview.WindowsConfig
 ---@field help dapview.HelpConfig

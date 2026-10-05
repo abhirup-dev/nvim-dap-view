@@ -54,7 +54,8 @@ end
 ---@param canvas dapview.Canvas
 local function show_variables(variables_reference, parent_path, line, depth, canvas)
     local parent_line = line
-    local err, response = session:request("variables", { variablesReference = variables_reference })
+    local err, response =
+        require("dap-view.decoders").resolve_children(variables_reference, parent_path, { session = session })
 
     if err then
         local err_content = string.rep("\t", math.max(depth + 1 - (root_depth or 0), 0)) .. fmt.dap_error(err)
@@ -72,7 +73,7 @@ local function show_variables(variables_reference, parent_path, line, depth, can
 
     local config = setup.config
     local sort_variables = config.render.sort_variables
-    if sort_variables then
+    if sort_variables and variables_reference >= 0 then
         table.sort(variables, sort_variables)
     end
 
@@ -92,7 +93,7 @@ local function show_variables(variables_reference, parent_path, line, depth, can
         end
 
         local is_expanded = state.variable_path_is_expanded[path]
-        local is_structured = variable.variablesReference > 0
+        local is_structured = variable.variablesReference ~= 0
 
         local prev_variable_value = state.variable_path_to_value[path]
 
@@ -101,7 +102,8 @@ local function show_variables(variables_reference, parent_path, line, depth, can
         local updated = prev_variable_value and prev_variable_value ~= variable.value
 
         -- Workaround for https://github.com/microsoft/vscode-js-debug/issues/2320
-        local value = state.variable_path_to_set_variables[path] and prev_variable_value or variable.value
+        local value = state.variable_path_to_set_variables[path] and prev_variable_value
+            or require("dap-view.decoders").format_value(variable, path, { session = session })
 
         state.variable_path_to_value[path] = value
         state.variable_path_to_name[path] = variable.name
@@ -187,6 +189,7 @@ M.show = function()
         ---@cast tmp_session dap.Session
 
         session = tmp_session
+        local stamp = require("dap-view.decoders").context(session, "scopes")
 
         local current_frame = session.current_frame
 
@@ -318,6 +321,9 @@ M.show = function()
             return
         end
 
+        if not require("dap-view.decoders").is_current(stamp) or state.current_section ~= "scopes" then
+            return
+        end
         util.set_lines(state.bufnr, 0, line - 1, false, canvas.contents)
 
         for _, highlights in ipairs(canvas.highlights) do

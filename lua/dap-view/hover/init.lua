@@ -79,7 +79,7 @@ end
 ---@param bufnr integer
 M.set_autocmds = function(bufnr)
     api.nvim_create_autocmd("BufLeave", {
-        buf = bufnr,
+        buffer = bufnr,
         callback = function()
             api.nvim_buf_delete(bufnr, { force = true })
 

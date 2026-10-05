@@ -1,0 +1,10 @@
+syntax = "proto3";
+package example;
+message Address { string city = 1; }
+message Person {
+  string name = 1;
+  int32 age = 2;
+  Address address = 3;
+  repeated string tags = 4;
+  bytes padding = 5;
+}

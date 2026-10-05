@@ -73,3 +73,9 @@ You can contribute in many ways:
 - If you have some spare bucks, consider becoming a [sponsor](https://github.com/sponsors/igorlfs).
 
 [^1]: the quasi canonical neovim implementation of [`DAP`](https://microsoft.github.io/debug-adapter-protocol/); the protocol that enhances text editors with IDE-like debugging capabilities
+
+### Value decoder profiles (fork)
+
+Expand serialized protobuf, JSON and custom wrappers alongside their raw adapter
+representation in scopes, watches and hover. See [configuration, Go/Delve examples,
+MCP/RPC registration and validation](docs/value-decoders.md).

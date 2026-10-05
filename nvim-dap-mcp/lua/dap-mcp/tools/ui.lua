@@ -68,3 +68,33 @@ registry.register({
         return { host = args.name }
     end,
 })
+
+registry.register({
+    name = "register_decoder_profile",
+    description = "Register a data-only dap-view decoder profile. Commands must be locally allowlisted IDs; Lua and target evaluation are forbidden.",
+    schema = registry.schema(
+        { profile = { type = "object", description = "Profile with name and ordered decoders" } },
+        { "profile" }
+    ),
+    handler = function(args)
+        dapview()
+        local ok, result = pcall(require("dap-view.decoders").register_decoder_profile, args.profile)
+        if not ok then
+            util.fail("invalid_argument", "%s", tostring(result))
+        end
+        return result
+    end,
+})
+registry.register({
+    name = "use_decoder_profile",
+    description = "Select a registered dap-view decoder profile, or off, and refresh the views.",
+    schema = registry.schema({ name = { type = "string" } }, { "name" }),
+    handler = function(args)
+        dapview()
+        local ok, result = pcall(require("dap-view.decoders").use, args.name)
+        if not ok then
+            util.fail("invalid_argument", "%s", tostring(result))
+        end
+        return result
+    end,
+})

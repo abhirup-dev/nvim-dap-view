@@ -22,11 +22,15 @@ local function show_variables(children, reference, line, depth)
         local prefix = ""
 
         local icons = setup.config.icons
-        if variable.variablesReference > 0 then
+        if variable.variablesReference ~= 0 then
             prefix = child.expanded and icons.expanded or icons.collapsed
         end
 
-        local value = variable.value
+        local value = require("dap-view.decoders").format_value(
+            variable,
+            child.path or variable.name,
+            { session = require("dap").session() }
+        )
 
         local separator = #value > 0 and " = " or ""
 
@@ -123,7 +127,7 @@ M.show = function()
             local prefix = ""
 
             local icons = setup.config.icons
-            if view.children ~= nil then
+            if response and response.variablesReference ~= 0 then
                 prefix = view.expanded and icons.expanded or icons.collapsed
             end
 

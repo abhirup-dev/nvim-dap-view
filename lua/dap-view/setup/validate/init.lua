@@ -16,6 +16,7 @@ function M.validate(config)
         follow_tab = { config.follow_tab, { "boolean", "function" } },
         host = { config.host, "table" },
         tree = { config.tree, "table" },
+        decoders = { config.decoders, "table", true },
     }, config)
 
     if

@@ -2,8 +2,8 @@
 -- The checkout this file lives in, so the suite runs against the code next to it
 local repo = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p:h:h")
 
-vim.opt.runtimepath:prepend(vim.fn.expand("~/.local/share/nvim/lazy/nvim-nio"))
-vim.opt.runtimepath:prepend(vim.fn.expand("~/.local/share/nvim/lazy/nvim-dap"))
+vim.opt.runtimepath:prepend(vim.env.NVIM_NIO_PATH or vim.fn.expand("~/.local/share/nvim/lazy/nvim-nio"))
+vim.opt.runtimepath:prepend(vim.env.NVIM_DAP_PATH or vim.fn.expand("~/.local/share/nvim/lazy/nvim-dap"))
 vim.opt.runtimepath:prepend(repo)
 
 local H = {}
@@ -39,7 +39,7 @@ function H.done()
     for _, f in ipairs(H.failures) do
         print(f)
     end
-    vim.cmd("qa!")
+    vim.cmd(H.failed > 0 and "cq!" or "qa!")
 end
 
 -- Drive the event loop for `ms`, since fake responses land via vim.schedule.

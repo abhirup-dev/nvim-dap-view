@@ -104,3 +104,9 @@ The Go tests start a real headless Neovim with the plugin loaded and talk to it
 over a socket; no debug adapter is involved, so what they cover is the bridge
 (the registry, immediate calls, the pending/poll loop, error codes) and the MCP
 handshake. The Lua suite runs against a fake session.
+
+With dap-view integration enabled, `register_decoder_profile` accepts a `profile`
+object containing a name and ordered declarative decoders; `use_decoder_profile`
+selects one by `name` (or `off`). Runtime registration permits rules and locally
+allowlisted command IDs, and rejects Lua and target evaluation. See the fork's
+[value-decoder guide](../docs/value-decoders.md) for schema, configuration and RPC CLI.

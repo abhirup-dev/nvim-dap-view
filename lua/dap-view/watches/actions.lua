@@ -104,12 +104,18 @@ M.set_value = function(line)
     local get_default = function()
         local expression_view = state.expression_views_by_line[line]
         if expression_view and expression_view.view and expression_view.view.response then
-            return expression_view.view.response.result
+            return require("dap-view.decoders").original_value(
+                expression_view.view.response.variablesReference,
+                expression_view.view.response.result
+            )
         end
 
         local variable_reference = state.variable_views_by_line[line]
         if variable_reference then
-            return variable_reference.view.variable.value
+            return require("dap-view.decoders").original_value(
+                variable_reference.view.variable.variablesReference,
+                variable_reference.view.variable.value
+            )
         end
 
         return ""
@@ -181,10 +187,10 @@ M.expand_or_collapse = function(line)
             local variable_view = variable_reference.view
             local reference = variable_view.variable.variablesReference
 
-            if reference > 0 then
+            if reference ~= 0 then
                 variable_view.expanded = not variable_view.expanded
 
-                variable_view.children, variable_view.err = eval.expand_variable(reference)
+                variable_view.children, variable_view.err = eval.expand_variable(reference, nil, variable_view.path)
 
                 return true
             else

@@ -6,7 +6,7 @@
 
 local repo = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p:h:h")
 vim.opt.runtimepath:prepend(repo)
-vim.opt.runtimepath:prepend(vim.fn.expand("~/.local/share/nvim/lazy/nvim-dap"))
+vim.opt.runtimepath:prepend(vim.env.NVIM_DAP_PATH or vim.fn.expand("~/.local/share/nvim/lazy/nvim-dap"))
 
 local passed, failed = 0, 0
 local failures = {}
@@ -227,6 +227,8 @@ local expected_tools = {
     "ui_undock",
     "ui_dock",
     "ui_host",
+    "register_decoder_profile",
+    "use_decoder_profile",
 }
 
 for _, name in ipairs(expected_tools) do

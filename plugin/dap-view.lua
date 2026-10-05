@@ -111,3 +111,13 @@ api.nvim_create_autocmd("SessionLoadPost", {
         require("dap-view.vim-sessions").load_session_hook()
     end,
 })
+
+command("DapViewProfile", function(opts)
+    local ok, err = pcall(function()
+        assert(#opts.fargs == 2 and opts.fargs[1] == "use", "Usage: DapViewProfile use <name|off>")
+        require("dap-view.decoders").use(opts.fargs[2])
+    end)
+    if not ok then
+        vim.notify(tostring(err), vim.log.levels.ERROR)
+    end
+end, { nargs = "+" })

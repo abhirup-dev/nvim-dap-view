@@ -12,9 +12,9 @@ import (
 	"github.com/abhirup-dev/nvim-dap-view/nvim-dap-mcp/internal/testnvim"
 )
 
-// toolCount is the size of the phase 5a registry. It is asserted rather than
+// toolCount is the size of the registry including decoder profiles. It is asserted rather than
 // read so a tool silently disappearing from the Lua side fails here.
-const toolCount = 21
+const toolCount = 23
 
 func dial(t *testing.T) *nvimbridge.Bridge {
 	t.Helper()

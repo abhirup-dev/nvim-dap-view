@@ -7,6 +7,7 @@
 ---@field err? dap.ErrorResponse
 ---@field updated boolean
 ---@field reference number
+---@field path? string
 ---@field expanded boolean
 ---@field children? dapview.VariableView[]
 

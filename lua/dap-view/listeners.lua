@@ -16,6 +16,7 @@ require("dap-view.tree.reroot")
 local SUBSCRIPTION_ID = "dap-view"
 
 dap.listeners.on_session[SUBSCRIPTION_ID] = function(_, new)
+    require("dap-view.decoders").invalidate()
     if new then
         local config = setup.config
         local term_config = config.windows.terminal
@@ -256,5 +257,25 @@ for _, listener in ipairs(auto_close) do
                 require("dap-view.actions").close(not (auto_toggle == "keep_terminal"))
             end
         end
+    end
+end
+
+-- Invalidate before existing refresh listeners run. A generation also fences async completions.
+for _, event in ipairs({
+    "event_continued",
+    "continue",
+    "next",
+    "stepIn",
+    "stepOut",
+    "event_stopped",
+    "scopes",
+    "event_terminated",
+    "disconnect",
+    "setVariable",
+    "setExpression",
+    "restart",
+}) do
+    dap.listeners.before[event]["dap-view-decoders"] = function()
+        require("dap-view.decoders").invalidate()
     end
 end
