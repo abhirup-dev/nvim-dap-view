@@ -38,6 +38,7 @@ M.remove_watch_expr = function(line)
     local expression_view = state.expression_views_by_line[line]
 
     if expression_view then
+        eval.invalidate_registration(expression_view.expression)
         state.watched_expressions[expression_view.expression] = nil
 
         return expression_view

@@ -28,7 +28,7 @@ M.value_at = function(line)
         local variable_view = state.variable_views_by_line[line]
 
         if variable_view then
-            return variable_view.variable.value, variable_view.variable.name
+            return variable_view.view.variable.value, variable_view.view.variable.name
         end
 
         local expression_view = state.expression_views_by_line[line]

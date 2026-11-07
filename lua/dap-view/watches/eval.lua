@@ -1,11 +1,18 @@
 local state = require("dap-view.state")
 
 local M = {}
+local registrations = {}
+
+-- Invalidate all pending evaluations for a removed registration.
+M.invalidate_registration = function(expression)
+    registrations[expression] = (registrations[expression] or 0) + 1
+end
 
 ---@param expression string
 ---@param default_expanded boolean
 ---@param id? integer
 M.evaluate_expression = function(expression, default_expanded, id)
+    local registration = registrations[expression] or 0
     local session = assert(require("dap").session(), "has active session")
 
     local frame_id = session.current_frame and session.current_frame.id
@@ -14,7 +21,7 @@ M.evaluate_expression = function(expression, default_expanded, id)
     local err, response =
         session:request("evaluate", { expression = expression, context = "watch", frameId = frame_id })
 
-    if not require("dap-view.decoders").is_current(stamp) then
+    if registration ~= (registrations[expression] or 0) or not require("dap-view.decoders").is_current(stamp) then
         return
     end
     if response then
@@ -79,7 +86,7 @@ M.evaluate_expression = function(expression, default_expanded, id)
         end
     end
 
-    if require("dap-view.decoders").is_current(stamp) then
+    if registration == (registrations[expression] or 0) and require("dap-view.decoders").is_current(stamp) then
         state.watched_expressions[expression] = new_expression_view
     end
 end
