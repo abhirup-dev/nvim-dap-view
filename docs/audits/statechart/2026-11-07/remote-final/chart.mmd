@@ -1,0 +1,31 @@
+---
+title: "Remote key delivery across docking"
+---
+stateDiagram-v2
+  state "Legend" as legend {
+    lg0: Breaks NoOldCallback
+    lg1: Path to the NoOldCallback bug
+  }
+  class lg0 breaks
+  class lg1 bugPath
+  s0: starting
+  s1: ready
+  s2: closed
+  s3: ready / key queued
+  s4: closed / key queued
+  s5: closed / key applied
+  [*] --> s0
+  s0 --> s1: viewer attaches
+  s0 --> s2: startup fails and releases resources
+  s1 --> s2: you dock into a local host
+  s1 --> s3: viewer sends a key
+  s3 --> s1: scheduled key runs
+  s3 --> s4: you dock into a local host
+  s4 --> s5: scheduled key runs
+  classDef breaks fill:#ffecee,stroke:#e72e3b,stroke-width:2.5px,color:#cd2834
+  class s0 bugPath
+  class s1 bugPath
+  class s3 bugPath
+  class s4 bugPath
+  class s5 breaks
+  class s5 bugPath

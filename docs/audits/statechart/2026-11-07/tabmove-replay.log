@@ -1,0 +1,3 @@
+STEP 1 reorder actual=1 marker=2
+STEP 2 saved stale markerSTEP 3 restored tabs=2 unrelated_user_tab=2
+STEP 4 unrelated_user_tab_valid=false

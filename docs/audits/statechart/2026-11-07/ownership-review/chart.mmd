@@ -1,0 +1,34 @@
+---
+title: "Saved marker after moving a tab"
+---
+stateDiagram-v2
+  state "Legend" as legend {
+    lg0: Breaks NeverCloseUser or RestoredIdentity
+    lg1: Path to the NeverCloseUser or RestoredIdentity bug
+  }
+  class lg0 breaks
+  class lg1 bugPath
+  s0: live / original order
+  s1: live / debugger moved first
+  s2: saved / original order
+  s3: restored / debug claimed
+  s4: saved / debugger moved first
+  s5: closed / user tab survives
+  s6: restored / user claimed
+  s7: closed / user tab lost
+  [*] --> s0
+  s0 --> s1: you move the debugger tab without switching tabs
+  s0 --> s2: you save the stale index
+  s1 --> s4: you save the stale index
+  s2 --> s3: the saved index selects its restored tab
+  s3 --> s5: the claimed tab closes
+  s4 --> s6: the saved index selects its restored tab
+  s6 --> s7: the claimed tab closes
+  classDef breaks fill:#ffecee,stroke:#e72e3b,stroke-width:2.5px,color:#cd2834
+  class s0 bugPath
+  class s1 bugPath
+  class s4 bugPath
+  class s6 breaks
+  class s6 bugPath
+  class s7 breaks
+  class s7 bugPath

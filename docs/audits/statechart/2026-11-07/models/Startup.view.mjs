@@ -1,0 +1,2 @@
+// Bounded nvim-dap-view lifecycle audit; 2026-11-07. Run Statechart with matching cfg/view; Lua probes require DAP_REPO and headless Neovim. No VPN.
+export const title='Startup reply fencing'; export const state=v=>v.phase; export const step=a=>({Start:'spawn viewer and request readiness',Reply:'current startup reply arrives',Cancel:'timeout or cancel releases resources',LateReply:'expired startup reply is ignored',Done:'finished'}[a]||a);

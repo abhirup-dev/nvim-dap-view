@@ -1,0 +1,245 @@
+
+registry
+  ok   tool registered: list_configurations
+  ok   has a description: list_configurations
+  ok   has an object schema: list_configurations
+  ok   tool registered: start_session
+  ok   has a description: start_session
+  ok   has an object schema: start_session
+  ok   tool registered: stop_session
+  ok   has a description: stop_session
+  ok   has an object schema: stop_session
+  ok   tool registered: session_status
+  ok   has a description: session_status
+  ok   has an object schema: session_status
+  ok   tool registered: control
+  ok   has a description: control
+  ok   has an object schema: control
+  ok   tool registered: wait_for_pause
+  ok   has a description: wait_for_pause
+  ok   has an object schema: wait_for_pause
+  ok   tool registered: list_breakpoints
+  ok   has a description: list_breakpoints
+  ok   has an object schema: list_breakpoints
+  ok   tool registered: set_breakpoint
+  ok   has a description: set_breakpoint
+  ok   has an object schema: set_breakpoint
+  ok   tool registered: remove_breakpoint
+  ok   has a description: remove_breakpoint
+  ok   has an object schema: remove_breakpoint
+  ok   tool registered: get_stack
+  ok   has a description: get_stack
+  ok   has an object schema: get_stack
+  ok   tool registered: select_frame
+  ok   has a description: select_frame
+  ok   has an object schema: select_frame
+  ok   tool registered: list_threads
+  ok   has a description: list_threads
+  ok   has an object schema: list_threads
+  ok   tool registered: get_variables
+  ok   has a description: get_variables
+  ok   has an object schema: get_variables
+  ok   tool registered: get_value
+  ok   has a description: get_value
+  ok   has an object schema: get_value
+  ok   tool registered: set_variable
+  ok   has a description: set_variable
+  ok   has an object schema: set_variable
+  ok   tool registered: evaluate
+  ok   has a description: evaluate
+  ok   has an object schema: evaluate
+  ok   tool registered: ui_open
+  ok   has a description: ui_open
+  ok   has an object schema: ui_open
+  ok   tool registered: ui_close
+  ok   has a description: ui_close
+  ok   has an object schema: ui_close
+  ok   tool registered: ui_undock
+  ok   has a description: ui_undock
+  ok   has an object schema: ui_undock
+  ok   tool registered: ui_dock
+  ok   has a description: ui_dock
+  ok   has an object schema: ui_dock
+  ok   tool registered: ui_host
+  ok   has a description: ui_host
+  ok   has an object schema: ui_host
+  ok   tool registered: register_decoder_profile
+  ok   has a description: register_decoder_profile
+  ok   has an object schema: register_decoder_profile
+  ok   tool registered: use_decoder_profile
+  ok   has a description: use_decoder_profile
+  ok   has an object schema: use_decoder_profile
+  ok   registry holds exactly the expected tools
+  ok   tools() is JSON encodable
+  ok   empty schema properties encode as a JSON object, not an array
+
+dispatch contract
+  ok   unknown tool fails
+  ok   unknown tool has a stable error code
+  ok   a purely local tool answers without a ticket
+  ok   polling an unknown ticket is a structured error
+
+session_status composer
+  ok   session_status succeeds
+  ok   state is stopped
+  ok   reports the stopped thread
+  ok   reports the current frame
+  ok   frame carries the source path
+  ok   frame carries the line
+  ok   source context is present
+  ok   source starts source_context lines above the frame
+  ok   source spans source_context lines either side
+  ok   source lines come from the file
+  ok   stack is present
+  ok   top of stack is the current frame
+  ok   locals are present
+  ok   locals come from the first scope
+  ok   locals report the total child count
+  ok   default page holds max_children entries
+  ok   an oversized value is flagged truncated
+  ok   the clamped value respects max_value_width
+  ok   the clamped value has no linebreaks
+  ok   a truncated value carries a full_value_ref
+  ok   a short value is not flagged
+  ok   session_status is JSON encodable
+
+get_value
+  ok   get_value succeeds
+  ok   get_value returns the raw, unflattened text
+  ok   get_value on an unknown ref fails
+  ok   unknown ref has a stable error code
+
+get_variables paging
+  ok   page 1 succeeds
+  ok   page 1 holds page_size entries
+  ok   page 1 starts at the first child
+  ok   page 1 reports more to come
+  ok   page 1 reports the total
+  ok   the last page holds the remainder
+  ok   the last page starts where page 2 ended
+  ok   the last page reports no more
+  ok   a page past the end is empty, not an error
+  ok   an empty page is JSON encodable
+
+evaluate side-effect guard
+  ok   assignment is refused by default
+  ok   refusal has a stable error code
+  ok   a call is refused by default
+  ok   == is not mistaken for an assignment
+  ok   comparison is allowed: a != b
+  ok   comparison is allowed: a <= b
+  ok   comparison is allowed: a >= b
+  ok   mutation is refused: x += 1
+  ok   mutation is refused: i++
+  ok   mutation is refused: --i
+  ok   a plain expression evaluates
+  ok   the adapter's result comes back
+  ok   assignment is allowed with allow_side_effects
+  ok   a call is allowed with allow_side_effects
+
+stack and threads
+  ok   get_stack succeeds
+  ok   get_stack returns every frame
+  ok   frame ids survive
+  ok   select_frame succeeds
+  ok   select_frame reaches Session:_frame_set
+  ok   selecting a missing frame is a structured error
+  ok   list_threads returns every thread
+  ok   the stopped thread is flagged
+
+set_variable
+  ok   set_variable succeeds
+  ok   set_variable echoes the new value
+
+breakpoints round-trip
+  ok   no breakpoints to start with
+  ok   set_breakpoint succeeds
+  ok   the breakpoint is listed
+  ok   listed at the right line
+  ok   listed against the same file set_breakpoint reported
+  ok   listed against a real path
+  ok   the condition round-trips
+  ok   setting a breakpoint broadcasts to the session
+  ok   remove_breakpoint reports the removal
+  ok   the breakpoint is gone
+  ok   removing the last breakpoint broadcasts an explicit empty list for that source
+
+wait_for_pause
+  ok   wait_for_pause answers immediately when already stopped
+  ok   and says so
+  ok   wait_for_pause returns pending while running
+  ok   and hands out a ticket
+  ok   the ticket is still pending before the event
+  ok   exactly one wait listener is registered
+  ok   the ticket resolves once event_stopped fires
+  ok   the snapshot names the event
+  ok   the snapshot is a full status
+  ok   the snapshot carries the stack
+  ok   the snapshot is JSON encodable
+  ok   the wait listener is unregistered on resolve
+  ok   a collected ticket is forgotten
+  ok   a doomed wait still returns pending
+  ok   the wait resolves when the timeout fires
+  ok   the snapshot names the timeout
+  ok   the snapshot flags timed_out
+  ok   a timeout still reports the live state
+  ok   a timed-out snapshot is JSON encodable
+  ok   a timeout unregisters every wait listener
+  ok   wait_for_pause pends before program exit
+  ok   an exited listener is registered
+  ok   exit resolves the wait with event=exited
+  ok   a program that exited is reported as terminated, not running
+  ok   and is not a timeout
+
+every tool's output is JSON encodable
+  ok   JSON encodable: list_configurations
+  ok   JSON encodable: start_session
+  ok   JSON encodable: stop_session
+  ok   JSON encodable: session_status
+  ok   JSON encodable: control
+  ok   JSON encodable: wait_for_pause
+  ok   JSON encodable: list_breakpoints
+  ok   JSON encodable: set_breakpoint
+  ok   JSON encodable: remove_breakpoint
+  ok   JSON encodable: get_stack
+  ok   JSON encodable: select_frame
+  ok   JSON encodable: list_threads
+  ok   JSON encodable: get_variables
+  ok   JSON encodable: get_value
+  ok   JSON encodable: set_variable
+  ok   JSON encodable: evaluate
+  ok   JSON encodable: ui_open
+  ok   JSON encodable: ui_close
+  ok   JSON encodable: ui_undock
+  ok   JSON encodable: ui_dock
+  ok   JSON encodable: ui_host
+  ok   JSON encodable: register_decoder_profile
+  ok   JSON encodable: use_decoder_profile
+
+sidecar lifecycle
+  ok   default binary path sits under the plugin's bin/
+  ok   default binary path is inside the plugin root
+  ok   sidecar.bin overrides the default path
+  ok   the sidecar is not running before start()
+  ok   no pid before start()
+  ok   no url before start()
+  ok   status reports the configured autostart mode
+  ok   start() refuses when the binary is missing
+  ok   the missing binary is recorded as last_error
+  ok   stop() is a no-op when nothing is running
+  ok   autostart=on_session subscribes to event_initialized
+  ok   a second setup() replaces its subscription instead of stacking one
+  ok   autostart=never removes the event_initialized subscription
+
+ticket idle expiry
+  ok   poll refreshes an active ticket
+  ok   active wait survives beyond five minutes
+  ok   abandoned wait expires
+  ok   late completion does not resurrect ticket
+
+pending wait reset
+  ok   pending wait registered its listener
+  ok   reset removes pending wait
+  ok   late wait completion after reset cannot resurrect ticket
+
+215 passed, 0 failed

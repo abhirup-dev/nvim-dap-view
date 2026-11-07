@@ -1,0 +1,4 @@
+STEP 1 real PTY viewer ready
+STEP 2 real handler queued
+STEP 3 docked host=tab
+STEP 4 stale key applied to new tab host; hits=1

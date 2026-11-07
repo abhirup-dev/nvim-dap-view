@@ -1,0 +1,2 @@
+// Bounded nvim-dap-view lifecycle audit; 2026-11-07. Run Statechart with matching cfg/view; Lua probes require DAP_REPO and headless Neovim. No VPN.
+export const title="Remote key delivery across docking"; export const state=v=>v.phase+(v.queued?" / key queued":"")+(v.acted?" / key applied":""); export const step=a=>({Ready:"viewer attaches",Fail:"startup fails and releases resources",QueueKey:"viewer sends a key",Dock:"you dock into a local host",RunKey:"scheduled key runs",Done:"finished"}[a]||a);
