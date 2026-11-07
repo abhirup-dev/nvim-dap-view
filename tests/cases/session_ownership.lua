@@ -20,11 +20,17 @@ if role then
             vim.opt.sessionoptions:append("globals")
         end
         vim.cmd.edit(dir .. "/source.lua")
+        local source_page = api.nvim_get_current_tabpage()
         H.install_session(H.new_fake_session())
         require("dap-view").open()
         H.pump(100)
-        require("dap-view").show_view("repl")
+        if scenario ~= "move_first" and scenario ~= "move_last" then
+            require("dap-view").show_view("repl")
+        else
+            vim.o.sessionoptions = "buffers,curdir,tabpages,winsize,help,globals,skiprtp,folds"
+        end
         H.pump(100)
+        local debugger = api.nvim_get_current_tabpage()
         if scenario == "manual" then
             vim.cmd.tabclose({ bang = true })
             H.eq(vim.g.DapviewTabpage, nil, "manual tabclose clears ownership immediately")
@@ -42,6 +48,12 @@ if role then
         end
         vim.fn.writefile({ vim.json.encode(names(layout)) }, dir .. "/layout.json")
         vim.cmd.tabfirst()
+        if scenario == "move_first" or scenario == "move_last" then
+            api.nvim_set_current_tabpage(debugger)
+            vim.cmd(scenario == "move_first" and "tabmove 0" or "tabmove $")
+            vim.fn.writefile({ tostring(api.nvim_tabpage_get_number(source_page)) }, dir .. "/source-page")
+            -- No TabEnter between the reorder and the actual session writer.
+        end
         vim.cmd("mksession! " .. vim.fn.fnameescape(session))
         if scenario == "legacy" then
             local lines = vim.fn.readfile(session)
@@ -53,7 +65,14 @@ if role then
         H.done()
     else
         vim.cmd.source(session)
+        local source_page
+        if scenario == "move_first" or scenario == "move_last" then
+            source_page = api.nvim_list_tabpages()[tonumber(vim.fn.readfile(dir .. "/source-page")[1])]
+        end
         H.pump(300)
+        if source_page then
+            H.ok(api.nvim_tabpage_is_valid(source_page), "original source tab handle survives reordered restore")
+        end
         local view_win = require("dap-view.state").winnr
         local view_page = restored == "tab"
             and view_win
@@ -114,6 +133,10 @@ end
 local file = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p")
 for _, case in ipairs({
     { "manual", "tab", "tab" },
+    { "move_first", "tab", "tab" },
+    { "move_last", "tab", "tab" },
+    { "move_first", "tab", "split" },
+    { "move_last", "tab", "split" },
     { "normal", "tab", "tab" },
     { "normal", "tab", "split" },
     { "normal", "split", "tab" },

@@ -81,7 +81,8 @@ end
 
 ---Session files address tabpages by number, and ours moves whenever a tabpage
 ---before it is opened, closed or dragged. Cheap enough to run on every tabpage
----switch, which is what stands in for the `TabMoved` Neovim does not have
+---switch, plus the session-write boundary below for `:tabmove` without a
+---switch. Neovim has no `TabMoved` event
 ---(probed on 0.12.4: `TabNew`, `TabNewEntered`, `TabEnter`, `TabLeave`,
 ---`TabClosedPre` and `TabClosed` are the whole set)
 local mark_tabpage = function()
@@ -109,6 +110,20 @@ local watch_tabpage = function()
         group = marker_augroup,
         callback = mark_tabpage,
     })
+
+    if vim.fn.exists("##SessionWritePre") == 1 then
+        api.nvim_create_autocmd("SessionWritePre", { group = marker_augroup, callback = mark_tabpage })
+    else
+        -- 0.12 has no pre-write event. Correct the serialized index immediately
+        -- after writing, before any reader can consume this session.
+        api.nvim_create_autocmd("SessionWritePost", {
+            group = marker_augroup,
+            callback = function()
+                mark_tabpage()
+                require("dap-view.vim-sessions").refresh_tabpage_marker(vim.g[MARKER])
+            end,
+        })
+    end
 
     mark_tabpage()
 end

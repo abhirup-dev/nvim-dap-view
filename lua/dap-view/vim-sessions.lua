@@ -20,6 +20,28 @@ local SESSION_VARIABLES = {
 ---writes it, and `load_session_hook` is what consumes it
 M.SESSION_VARIABLES = SESSION_VARIABLES
 
+---Compatibility for Neovim without SessionWritePre. Only replace the global
+---mksession actually serialized; sessions without globals retain their legacy
+---buffer-only ownership rule. Never append a command after SessionLoadPost.
+---@param number integer?
+M.refresh_tabpage_marker = function(number)
+    if not number or vim.v.this_session == "" then
+        return
+    end
+
+    local lines = vim.fn.readfile(vim.v.this_session)
+    for i, line in ipairs(lines) do
+        if line:match("^let DapviewTabpage%s*=%s*%d+%s*$") then
+            local replacement = "let DapviewTabpage = " .. number
+            if line ~= replacement then
+                lines[i] = replacement
+                vim.fn.writefile(lines, vim.v.this_session)
+            end
+            return
+        end
+    end
+end
+
 M.save_state = function()
     vim.g[SESSION_VARIABLES["section"]] = state.current_section
 

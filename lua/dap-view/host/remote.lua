@@ -96,6 +96,9 @@ local placeholder
 ---@type string? Opaque multiplexer handle for the pane the viewer runs in
 local handle
 
+-- Identity independent of channel IDs, pane handles and process ID reuse.
+local lifetime = {}
+
 ---@type uv.uv_timer_t?
 local debounce
 ---@type uv.uv_timer_t?
@@ -609,6 +612,7 @@ local close_pane = function()
 end
 
 M.close = function()
+    lifetime = {}
     if pending_startup then
         pending_startup.done, pending_startup.ok, pending_startup.result = true, false, "Remote startup cancelled"
         pending_startup = nil
@@ -737,8 +741,23 @@ end
 ---@param lhs string
 ---@param line integer
 M.on_key = function(lhs, line)
+    local owner = require("dap-view.host")
+    local epoch, channel, window, peer = lifetime, chan, placeholder, viewer
+    local buffer = mirrored_bufnr()
+    local valid = function()
+        return epoch == lifetime
+            and channel ~= nil
+            and channel == chan
+            and peer == viewer
+            and window == placeholder
+            and state.winnr == window
+            and owner.name() == "remote"
+            and M.is_open()
+            and buffer == mirrored_bufnr()
+    end
+
     vim.schedule(function()
-        if not util.is_win_valid(state.winnr) or not util.is_buf_valid(state.bufnr) then
+        if not valid() or not util.is_win_valid(state.winnr) or not util.is_buf_valid(state.bufnr) then
             return
         end
 
@@ -771,6 +790,11 @@ M.on_key = function(lhs, line)
         -- `nvim_win_call` so `line(".")` inside upstream actions reads the
         -- window we just positioned
         api.nvim_win_call(state.winnr, function()
+            -- Cursor/window autocmds can close or replace the host too. Recheck
+            -- at the final boundary before invoking a mapping with side effects.
+            if not valid() then
+                return
+            end
             if map.callback then
                 map.callback()
             elseif map.rhs and map.rhs ~= "" then
