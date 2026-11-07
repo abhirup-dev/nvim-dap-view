@@ -48,32 +48,26 @@ end
 
 ---Tabpages the restored session left behind for us.
 ---
----A host that owns a whole tabpage owns everything in it, the code window
----included, so a restored tabpage that held *any* of the buffers we are about to
----delete is the debugger's and goes whole. A host that lives in the user's own
----tabpage only gets to reclaim a tabpage whose *every* window held one of them.
+---Without a saved ownership marker, only a tabpage made entirely of debugger
+---buffers can be reclaimed. Mixed source/debugger tabs may belong to a split
+---host, regardless of the host selected for this restore.
 ---@param doomed integer[]
 ---@return integer[]
 local stale_tabpages = function(doomed)
-    local owns_tabpage = require("dap-view.host").get().owns_tabpage
-
     local stale = {}
 
     for _, page in ipairs(api.nvim_list_tabpages()) do
         local wins = api.nvim_tabpage_list_wins(page)
 
-        local held = false
         local only = #wins > 0
 
         for _, win in ipairs(wins) do
-            if vim.tbl_contains(doomed, api.nvim_win_get_buf(win)) then
-                held = true
-            else
+            if not vim.tbl_contains(doomed, api.nvim_win_get_buf(win)) then
                 only = false
             end
         end
 
-        if (owns_tabpage and held) or only then
+        if only then
             table.insert(stale, page)
         end
     end
@@ -110,15 +104,15 @@ end
 ---
 ---Session files address tabpages by number, so the value is an index into the
 ---restored tabpage list rather than a handle. Always consumed, even when it is
----not ours to act on: a marker left over from a session written under the tab
----host must not outlive this restore under another one
+---invalid: ownership was established by the saving host, even if this restore
+---uses a split host
 ---@return integer?
 local marked_tabpage = function()
     local number = vim.g[SESSION_VARIABLES["tabpage"]]
 
     vim.g[SESSION_VARIABLES["tabpage"]] = nil
 
-    if type(number) ~= "number" or not require("dap-view.host").get().owns_tabpage then
+    if type(number) ~= "number" or number < 1 or number % 1 ~= 0 then
         return
     end
 

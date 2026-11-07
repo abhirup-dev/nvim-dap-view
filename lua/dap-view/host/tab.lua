@@ -69,21 +69,6 @@ local MARKER = require("dap-view.vim-sessions").SESSION_VARIABLES.tabpage
 ---@type integer?
 local marker_augroup
 
----Session files address tabpages by number, and ours moves whenever a tabpage
----before it is opened, closed or dragged. Cheap enough to run on every tabpage
----switch, which is what stands in for the `TabMoved` Neovim does not have
----(probed on 0.12.4: `TabNew`, `TabNewEntered`, `TabEnter`, `TabLeave`,
----`TabClosedPre` and `TabClosed` are the whole set)
-local mark_tabpage = function()
-    if not M.is_active() then
-        return
-    end
-
-    ---@cast tabpage integer
-
-    vim.g[MARKER] = api.nvim_tabpage_get_number(tabpage)
-end
-
 local unmark_tabpage = function()
     if marker_augroup then
         pcall(api.nvim_del_augroup_by_id, marker_augroup)
@@ -92,6 +77,24 @@ local unmark_tabpage = function()
     end
 
     vim.g[MARKER] = nil
+end
+
+---Session files address tabpages by number, and ours moves whenever a tabpage
+---before it is opened, closed or dragged. Cheap enough to run on every tabpage
+---switch, which is what stands in for the `TabMoved` Neovim does not have
+---(probed on 0.12.4: `TabNew`, `TabNewEntered`, `TabEnter`, `TabLeave`,
+---`TabClosedPre` and `TabClosed` are the whole set)
+local mark_tabpage = function()
+    if not M.is_active() then
+        -- A manual :tabclose bypasses M.close. Drop the saved index before a
+        -- user's new tabpage can take its number (and its apparent ownership).
+        unmark_tabpage()
+        return
+    end
+
+    ---@cast tabpage integer
+
+    vim.g[MARKER] = api.nvim_tabpage_get_number(tabpage)
 end
 
 ---Mark the tabpage we just took, and keep the number up to date for as long as
