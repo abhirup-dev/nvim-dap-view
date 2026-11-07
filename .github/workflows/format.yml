@@ -1,8 +1,6 @@
 ---
 on:
   push:
-    branches-ignore:
-      - "gh-pages"
   pull_request:
 
 name: format
