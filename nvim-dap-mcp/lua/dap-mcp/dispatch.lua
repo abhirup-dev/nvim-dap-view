@@ -19,7 +19,7 @@ local util = require("dap-mcp.util")
 local TICKET_TTL_MS = 5 * 60 * 1000
 
 ---@class dapmcp.Ticket
----@field created integer
+---@field touched integer
 ---@field done boolean
 ---@field result dapmcp.Result?
 
@@ -43,7 +43,7 @@ local function gc()
     local now = vim.uv.now()
 
     for id, ticket in pairs(tickets) do
-        if now - ticket.created > TICKET_TTL_MS then
+        if now - ticket.touched > TICKET_TTL_MS then
             tickets[id] = nil
         end
     end
@@ -106,7 +106,12 @@ M.call = function(name, args)
 
     M.call_async(name, args, function(result)
         if returned then
-            tickets[id] = { created = vim.uv.now(), done = true, result = result }
+            local entry = tickets[id]
+            if entry then
+                entry.done = true
+                entry.result = result
+                entry.touched = vim.uv.now()
+            end
         else
             immediate = result
         end
@@ -117,7 +122,7 @@ M.call = function(name, args)
         return immediate
     end
 
-    tickets[id] = { created = vim.uv.now(), done = false }
+    tickets[id] = { touched = vim.uv.now(), done = false }
 
     return { ok = true, result = { pending = true, ticket = id } }
 end
@@ -137,6 +142,7 @@ M.poll = function(ticket)
         )
     end
 
+    entry.touched = vim.uv.now()
     if not entry.done then
         return { ok = true, result = { pending = true, ticket = ticket } }
     end
@@ -148,7 +154,6 @@ end
 
 M.reset = function()
     tickets = {}
-    next_ticket = 0
 end
 
 return M

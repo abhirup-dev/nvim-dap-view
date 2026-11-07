@@ -21,7 +21,7 @@ local M = {}
 ---@class dapmcp.Config
 ---@field port integer
 ---@field bind string
----@field token string? nil means the sidecar generates one per start
+---@field token string? nil disables authentication
 ---@field autostart "never"|"on_session"|"always"
 ---@field response dapmcp.ResponseConfig
 ---@field evaluate dapmcp.EvaluateConfig

@@ -146,8 +146,8 @@ local spawn = function()
 end
 
 ---@return integer
-local connect = function()
-    local listening = vim.wait(SOCKET_WAIT_MS, function()
+local connect = function(deadline)
+    local listening = vim.wait(math.max(0, deadline - vim.uv.now()), function()
         return sock ~= nil and vim.uv.fs_stat(sock) ~= nil
     end, 50)
 
@@ -161,7 +161,7 @@ local connect = function()
     local connected
 
     -- The socket file exists a moment before the server accepts on it
-    vim.wait(5000, function()
+    vim.wait(math.max(0, deadline - vim.uv.now()), function()
         local ok, result = pcall(vim.fn.sockconnect, "pipe", sock, { rpc = true })
 
         if ok and result ~= 0 then
@@ -246,7 +246,15 @@ local highlights = function()
 end
 
 ---@return dapview.RemoteViewer
-local attach_viewer = function()
+local attach_viewer = function(deadline)
+    local ready = vim.wait(math.max(0, deadline - vim.uv.now()), function()
+        local ok, result = pcall(vim.rpcrequest, chan, "nvim_exec_lua",
+            "return type(_G.dapview_viewer) == 'table' and type(_G.dapview_viewer.attach) == 'function'", {})
+        return ok and result == true
+    end, 50)
+    if not ready then
+        error("The remote viewer did not become ready within the startup timeout", 0)
+    end
     local tree = setup.config.tree
 
     vim.rpcrequest(chan, "nvim_set_client_info", "dap-view-owner", {}, "remote", vim.empty_dict(), vim.empty_dict())
@@ -490,8 +498,9 @@ M.open = function(bufnr, _)
 
     local ok, err = pcall(function()
         spawn()
-        chan = connect()
-        viewer = attach_viewer()
+        local deadline = vim.uv.now() + SOCKET_WAIT_MS
+        chan = connect(deadline)
+        viewer = attach_viewer(deadline)
     end)
 
     if not ok then

@@ -114,17 +114,27 @@ M.start = function(opts)
 
     local started_pid = nil
 
-    local handle = vim.system(cmd, { stderr = true }, function(result)
+    local ready = false
+    local output = ""
+    local handle = vim.system(cmd, { stderr = true, stdout = function(_, data)
+        if data then
+            output = output .. data
+            if output:find("DAP_MCP_READY", 1, true) then
+                ready = true
+            end
+        end
+    end }, function(result)
         vim.schedule(function()
             -- Only clear the state if this is still the process we started;
             -- a stop-then-start race must not wipe the new handle.
-            if state.pid == started_pid then
+            local current = state.pid == started_pid
+            if current then
                 state.handle = nil
                 state.pid = nil
                 state.url = nil
             end
 
-            if result.code ~= 0 and result.code ~= nil then
+            if current and result.code ~= 0 and result.code ~= nil then
                 state.last_error = ("sidecar exited with code %d: %s"):format(
                     result.code,
                     vim.trim(result.stderr or "")
@@ -138,10 +148,20 @@ M.start = function(opts)
 
     state.handle = handle
     state.pid = handle.pid
-    state.url = ("http://%s:%d/mcp"):format(conf.bind, conf.port)
+    state.url = nil
     state.started_at = vim.uv.now()
     state.last_error = nil
 
+    vim.wait(5000, function() return ready or state.handle ~= handle end, 20)
+    if not ready or state.handle ~= handle then
+        if state.handle == handle then
+            state.last_error = "sidecar did not become ready within 5 seconds"
+            M.stop()
+        end
+        notify(state.last_error or "sidecar exited before becoming ready", vim.log.levels.ERROR)
+        return false
+    end
+    state.url = ("http://%s:%d/mcp"):format(conf.bind, conf.port)
     notify(("sidecar listening on %s (pid %d)"):format(state.url, handle.pid), vim.log.levels.INFO)
 
     return true
@@ -162,6 +182,7 @@ M.stop = function()
 
     pcall(function()
         handle:kill("sigterm")
+        handle:wait(5000)
     end)
 
     return true

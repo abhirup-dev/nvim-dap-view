@@ -619,6 +619,30 @@ eq(
 )
 
 --------------------------------------------------------------------------------
+-- A polled long wait outlives the idle TTL; an abandoned wait cannot be
+-- resurrected when its handler eventually completes.
+group("ticket idle expiry")
+local clock = vim.uv.now
+local now = clock()
+vim.uv.now = function() return now end
+status_state = nil
+local live = dapmcp.call("wait_for_pause", { timeout_ms = 600000 }).result.ticket
+now = now + 299000
+eq(dispatch.poll(live).result.pending, true, "poll refreshes an active ticket")
+now = now + 299000
+eq(dispatch.poll(live).result.pending, true, "active wait survives beyond five minutes")
+now = now + 301000
+eq(dispatch.poll(live).error.code, "unknown_ticket", "abandoned wait expires")
+local callbacks = {}
+for key, callback in pairs(dap.listeners.after.event_stopped) do
+    if key:match("dap%-mcp.wait") then callbacks[#callbacks + 1] = callback end
+end
+for _, callback in ipairs(callbacks) do callback(fake, { reason = "breakpoint" }) end
+vim.wait(100, function() return false end, 10)
+eq(dispatch.poll(live).error.code, "unknown_ticket", "late completion does not resurrect ticket")
+vim.uv.now = clock
+
+--------------------------------------------------------------------------------
 
 print(("\n%d passed, %d failed"):format(passed, failed))
 

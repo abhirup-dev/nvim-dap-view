@@ -92,6 +92,8 @@ func run() error {
 		return fmt.Errorf("listen on %s: %w", listen, err)
 	}
 
+	fmt.Fprintln(os.Stdout, "DAP_MCP_READY")
+
 	httpServer := &http.Server{Handler: server.Handler()}
 
 	serveErr := make(chan error, 1)
