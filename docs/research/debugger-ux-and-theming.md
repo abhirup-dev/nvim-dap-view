@@ -6,7 +6,7 @@ Research date: **2026-11-07**. Repository snapshot: `1ea565148d5e91e7e248c41e93b
 
 Keep the plugin's compact, section-based Neovim interface. Retain semantic highlight links and user-owned layouts. Improve the distinction between **keyboard focus, the row being browsed, the inspected frame, the execution stop, changed values, and errors**, with text or shape cues as well as color. Prefer a few independently configurable roles over a new palette or a second UI framework.
 
-Everything recommended below is a **proposal for later consideration**, not an approved implementation plan or a stabilization requirement. The parent task remains stabilization/merge. The independent maintenance epic `epicdv-8x5` already contains seven recommendations; reconcile these findings with those tickets before creating any additional work. No source changes, environment changes, debugger/editor access, or Beads writes were performed for this research.
+Everything recommended below is a **proposal for later consideration**, not an approved implementation plan or a stabilization requirement. Stabilization has since merged into `main` as `7305f27`; this report retains its inspected pre-merge snapshot. The independent maintenance epic `dv-8x5` already contains seven recommendations; reconcile these findings with those tickets before creating any additional work. No source changes, environment changes, debugger/editor access, or Beads writes were performed for this research.
 
 ## Method and limits
 
@@ -201,11 +201,11 @@ Disassembly already has an [optional custom-view integration](../src/routes/disa
 
 ## Candidate future work packages
 
-These are **proposals**, not tickets created here. All implementation follows stabilization and the parent's adoption decision. Check `epicdv-8x5` first; merge overlapping acceptance criteria rather than duplicating its seven existing recommendations. The package boundaries below are intentionally narrow and do not propose a broad code refactor.
+These are **proposals**, not tickets created here. All implementation follows stabilization and the parent's adoption decision. Check `dv-8x5` first; merge overlapping acceptance criteria rather than duplicating its seven existing recommendations. The package boundaries below are intentionally narrow and do not propose a broad code refactor.
 
 | Priority/package | Deliverable and meaningful acceptance | Dependencies / parallelism / conflicts |
 | --- | --- | --- |
-| **P1 — Theme contract** | Confirm default-link/override behavior on 0.11 and 0.12; resolve semantic alias review points; document the public roles and customization lifecycle. Validate two contrasting themes, built-in/default and minimal styling, dark/light reload, and explicit overrides. | Can be investigated alongside discovery docs. Conflicts in `highlight.lua`/`util/hl.lua`; coordinate a single owner with the parent's current highlight work. |
+| **P1 — Theme contract** | Confirm default-link/override behavior on 0.11 and 0.12; resolve semantic alias review points; document the public roles and customization lifecycle. Validate two contrasting themes, built-in/default and minimal styling, dark/light reload, and explicit overrides. | Can be investigated alongside discovery docs. Conflicts in `highlight.lua`/`util/hl.lua`; assign one owner when future highlight work is approved. |
 | **P1 — Visible context/state contract** | Separate browsing, inspected frame and execution stop; define running/stale/loading/error text and capability availability. Verify resume, session/frame switch, late replies, unsupported actions and termination. | Agree on roles with theme package first. Touches renderers/listeners/control descriptions; overlaps stabilization hot paths, so wait for them to settle. |
 | **P1 — Effective keymap discovery** | Help reflects configured keys/actions and includes reroot/root-up, full values, host commands and read-only restrictions. All mouse actions have a keyboard route; test a remapped configuration and narrow help. | Mostly independent of theme work. Conflicts with keymap/help/command-definition changes; no new input framework dependency. |
 | **P2 — Detached theme parity** | Verify initial/reload theme parity, `background` and RGB/cterm behavior, mirror opt-out and viewer loss; account for window-local highlight overrides or explicitly document the limitation. | Depends on theme contract. Own remote/viewer transport files separately; avoid concurrent host stabilization edits. Use isolated fixtures later, not the user's running editor. |
