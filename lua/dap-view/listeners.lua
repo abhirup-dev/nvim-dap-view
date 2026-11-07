@@ -183,7 +183,16 @@ end
 local reeval = { "setExpression", "setVariable" }
 
 for _, listener in ipairs(reeval) do
-    dap.listeners.after[listener][SUBSCRIPTION_ID] = refresher.refresh_all_expressions
+    dap.listeners.after[listener][SUBSCRIPTION_ID] = function(session, err, _, request)
+        if err then
+            return
+        end
+        local frame = session.current_frame
+        if request and request.frameId and (not frame or request.frameId ~= frame.id) then
+            return
+        end
+        refresher.refresh_variables(session, frame)
+    end
 end
 
 dap.listeners.after.initialize[SUBSCRIPTION_ID] = function(session)
