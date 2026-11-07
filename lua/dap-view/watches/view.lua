@@ -78,7 +78,20 @@ local function show_variables(children, reference, line, depth)
     return line
 end
 
+local function fold_paths()
+    local paths = {}
+    for line, entry in pairs(state.variable_views_by_line) do
+        paths[line] = entry.view.path
+    end
+    for line, entry in pairs(state.expression_views_by_line) do
+        paths[line] = entry.expression
+    end
+    return paths
+end
+
 M.show = function()
+    local folds = require("dap-view.tree.fold")
+    local closed = state.winnr and folds.capture(state.winnr, fold_paths()) or {}
     -- New expressions may prepended
     -- And lines may be no longer valid if a variable changes (e.g., array's size changes)
     -- Hence, lines may change unexpectedly
@@ -165,6 +178,7 @@ M.show = function()
         end
 
         util.set_lines(state.bufnr, line, -1, true, {})
+        folds.restore(state.winnr, fold_paths(), closed)
     end
 end
 
