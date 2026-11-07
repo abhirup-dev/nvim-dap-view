@@ -246,8 +246,13 @@ local function synthetic(var, depth)
         not var.variablesReference or var.variablesReference == 0,
         "decoders must return children, not adapter references"
     )
-    local v =
-        { name = var.name, value = var.value or "", type = var.type, variablesReference = 0, _decoder_skip = true }
+    local v = {
+        name = safe_name(var.name),
+        value = var.value or "",
+        type = var.type,
+        variablesReference = 0,
+        _decoder_skip = true,
+    }
     if var.children then
         assert(type(var.children) == "table" and vim.islist(var.children), "invalid children")
         local children = {}
