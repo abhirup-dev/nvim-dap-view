@@ -126,6 +126,7 @@ for _, case in ipairs({
 }) do
     local root = vim.fn.tempname()
     vim.fn.mkdir(root, "p")
+    root = assert(vim.uv.fs_realpath(root))
     for _, name in ipairs({ "source", "left", "right" }) do
         vim.fn.writefile({ "-- " .. name }, root .. "/" .. name .. ".lua")
     end
