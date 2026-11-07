@@ -2,7 +2,10 @@ local root = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':p:h:h')
 vim.opt.runtimepath:prepend(root)
 local config = require('dap-mcp.config')
 local sidecar = require('dap-mcp.sidecar')
-local binary = assert(vim.env.DAP_MCP_TEST_BINARY)
+local binary = vim.fn.tempname()
+local build = vim.system({ 'go', 'build', '-o', binary, './cmd/nvim-dap-mcp' }, { cwd = root, text = true }):wait()
+assert(build.code == 0, build.stderr)
+
 local listener = assert(vim.uv.new_tcp())
 assert(listener:bind('127.0.0.1', 0))
 assert(listener:listen(16, function() end))
@@ -29,5 +32,6 @@ local ok, err = xpcall(function()
 end, debug.traceback)
 sidecar.stop()
 if not listener:is_closing() then listener:close() end
+vim.fn.delete(binary)
 if not ok then error(err) end
 vim.cmd('qa!')
