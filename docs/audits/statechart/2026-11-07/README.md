@@ -28,6 +28,9 @@ by `5df148d`. These are runtime findings, not additional formal-model results.
 
 ## Evidence
 
+Mermaid (`.mmd`) files are diagram source; SVG files are their renderings.
+These support the retained audit and are not a plugin frontend.
+
 - [Full audit and model exclusions](audit.md), including shortest numbered paths.
 - [Per-file coverage and baseline hashes](coverage.tsv) and
   [async operation inventory](async-boundaries.txt).
