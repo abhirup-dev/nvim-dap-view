@@ -5,3 +5,7 @@
 *.db
 .beads-credential-key
 .beads/proxieddb/
+
+# Beads runtime coordination
+.beads.gate.lock
+.beads/.auto-import-issues.jsonl

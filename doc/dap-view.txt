@@ -521,9 +521,53 @@ to set nvim-dap's switchbuf to another value. For instance:
     -- See :help dap-defaults to learn more
     require("dap").defaults.fallback.switchbuf = "usevisible,usetab,newtab"
 ==============================================================================
+VARIABLE PRESENTATION                        *dap-view-variable-presentation*
+
+`tree.variable_highlight` defaults to true. In scopes, watches and hover,
+variables marked by the adapter with DAP `presentationHint.kind = "virtual"`
+or `presentationHint.visibility = "internal"`
+use `NvimDapViewVariableInternal` (linked to Comment). Expanded descendants
+inherit this styling. Values that change still use the update highlight.
+Set this option to false to disable the styling.
+
+Changed values use NvimDapViewWatchUpdated in scopes and watches. Comparisons
+use the previous refresh generation in the same session, thread and frame;
+decoder completion and redraws retain the marker. The next stop or refresh
+clears it if the value is unchanged. Frames are matched by source path,
+function name and stack position, since DAP frame IDs can change at every
+stop. If that metadata is missing, frame ID is the fallback. A different
+session, thread or frame starts a fresh comparison.
+
+The virtual hint identifies synthetic adapter nodes, not all language
+internals. Read-only values, functions, private members and names starting
+with underscores are not automatically treated as internals. An adapter
+that omits the hint cannot be reliably classified from DAP alone.
+
+For adapter-specific overrides, supply a local callback. It receives the
+original DAP variable/evaluation and a context containing `session` (nil
+after disconnect), `path` and `parent_highlight`. Return a highlight suffix
+(prefixed with NvimDapView), nil for the default, or false for normal styling.
+For example, this opt-in fallback handles debugpy's unmarked Python groups: >lua
+    tree = {
+        variable_highlight = function(variable, ctx)
+            if ctx.session and ctx.session.config.type == "python"
+                and variable.type == "" and variable.value == ""
+                and (variable.variablesReference or 0) > 0
+                and (variable.name == "special variables"
+                    or variable.name == "function variables"
+                    or variable.name == "class variables") then
+                return "VariableInternal"
+            end
+        end,
+    }
+<
+This fallback is adapter-specific, not language-independent detection. It
+does not change the adapter's data, hide nodes or prevent expanding them.
+
+==============================================================================
 HIGHLIGHT GROUPS                                   *dap-view-highlight-groups*
 
-nvim-dap-view defines 34 (42 on nvim 0.12+) highlight groups, linked to
+nvim-dap-view defines highlight groups linked to
 (somewhat) reasonable defaults.
 
 Highlight Group                       Default Link
@@ -562,6 +606,7 @@ Highlight Group                       Default Link
 `NvimDapViewWatchError`               DiagnosticError
 `NvimDapViewWatchExpr`                Identifier
 `NvimDapViewWatchUpdated`             DiagnosticVirtualTextWarn
+`NvimDapViewVariableInternal`         Comment
 
 For neovim 0.12+, `Boolean`, `Constant`, `Float`, `Function`, `Number` and
 `String` have a `Dim` variant, which is used for virtual text. Additionaly,

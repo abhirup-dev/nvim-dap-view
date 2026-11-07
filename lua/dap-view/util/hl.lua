@@ -43,6 +43,33 @@ M.types_to_hl_group = {
     asyncfunction = "Function",
 }
 
+---DAP's virtual kind identifies adapter-generated nodes, not private/read-only user data.
+---Adapters that omit hints can opt into a local override without language heuristics here.
+---@param variable dap.Variable|dap.EvaluateResponse
+---@param context dapview.VariableHighlightContext
+---@return string? highlight Suffix of a NvimDapView highlight group
+M.variable_highlight = function(variable, context)
+    local rule = require("dap-view.setup").config.tree.variable_highlight
+    if rule == false then
+        return nil
+    end
+    if type(rule) == "function" then
+        local highlight = rule(variable, context)
+        if highlight == false then
+            return nil
+        end
+        if highlight ~= nil then
+            assert(type(highlight) == "string", "tree.variable_highlight must return a string, false or nil")
+            return highlight
+        end
+    end
+    local hint = variable.presentationHint
+    if hint and (hint.kind == "virtual" or hint.visibility == "internal") then
+        return "VariableInternal"
+    end
+    return context.parent_highlight
+end
+
 ---@param v dap.Variable|dap.EvaluateResponse
 M.hl_from_variable = function(v)
     local hl = v.type and M.types_to_hl_group[v.type:lower()]

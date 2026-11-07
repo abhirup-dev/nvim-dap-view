@@ -40,7 +40,7 @@ H.setup({
 })
 local fake = H.new_fake_session()
 fake.current_frame = { id = 11, scopes = { { name = "Locals", variablesReference = 100 } } }
-local raw = '{"age":37,"address":{"city":"Kolkata"},"tags":["a","b"]}'
+local raw = '{"age":37,"address":{"city":"Kolkata"},"tags":["a","b"],"active":true,"ratio":1.5,"empty":null}'
 local function respond(command, args)
     assert(not args.variablesReference or args.variablesReference >= 0, "synthetic reference sent to adapter")
     if command == "scopes" then
@@ -85,6 +85,23 @@ local function render()
     require("dap-view").show_view("scopes")
     H.pump(100)
 end
+local function assert_scalar_colors(buf, surface)
+    local expected = { age = "Number", city = "String", active = "Boolean", ratio = "Float", empty = "Constant" }
+    local contents = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+    local ns = require("dap-view.globals").NAMESPACE
+    for name, group in pairs(expected) do
+        local found = false
+        for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(buf, ns, 0, -1, { details = true })) do
+            if
+                (contents[mark[2] + 1] or ""):find(name .. " = ", 1, true)
+                and mark[4].hl_group == "NvimDapView" .. group
+            then
+                found = true
+            end
+        end
+        H.ok(found, surface .. " decoded " .. name .. " uses " .. group .. " highlight")
+    end
+end
 require("dap-view").open()
 render()
 H.eq(calls, 0, "decode lazy until expansion")
@@ -99,6 +116,7 @@ H.ok(lines():find("age = 37", 1, true), "decoded scalar in scopes")
 H.ok(lines():find('city = "Kolkata"', 1, true), "nested decoded field")
 H.ok(lines():find('2 = "b"', 1, true), "repeated decoded field")
 H.ok(lines():find("raw = ", 1, true), "raw sibling available")
+assert_scalar_colors(state.bufnr, "scopes")
 H.eq(calls, 1, "cached between renders")
 -- A real second Neovim mirrors rendered text and forwards keypresses to the owner.
 local remote_config = require("dap-view.setup").config.host.remote
@@ -186,7 +204,7 @@ D.invalidate()
 render()
 H.ok(lines():find("decode error", 1, true), "malformed fallback visible")
 H.ok(lines():find("raw = {invalid", 1, true), "raw survives failure")
-raw = '{"age":39}'
+raw = '{"age":39,"city":"Kolkata","active":true,"ratio":1.5,"empty":null}'
 D.invalidate()
 coroutine.wrap(function()
     require("dap-view.watches.eval").evaluate_expression("payload", true)
@@ -201,6 +219,7 @@ end)()
 require("dap-view").show_view("watches")
 H.pump(100)
 H.ok(lines():find("age = 39", 1, true), "watch decoded subtree")
+assert_scalar_colors(state.bufnr, "watches")
 state.hover = "payload"
 state.hovered_expression = { response = { result = raw, variablesReference = 0, type = "string" }, expanded = true }
 state.hover_path_is_expanded["payload.decoded"] = true
@@ -211,6 +230,7 @@ end)()
 H.pump(100)
 local hover = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
 H.ok(hover:find("age = 39", 1, true) and hover:find("raw = ", 1, true), "hover raw and decoded tree")
+assert_scalar_colors(buf, "hover")
 state.hover, state.hovered_expression = nil, nil
 H.group("runtime validation")
 local function rejected(decoder, label)

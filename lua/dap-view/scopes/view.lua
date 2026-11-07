@@ -53,7 +53,7 @@ end
 ---@param line integer
 ---@param depth integer
 ---@param canvas dapview.Canvas
-local function show_variables(variables_reference, parent_path, line, depth, canvas, render)
+local function show_variables(variables_reference, parent_path, line, depth, canvas, render, parent_highlight)
     local state = render.state
     local session = render.session
     local parent_line = line
@@ -84,6 +84,11 @@ local function show_variables(variables_reference, parent_path, line, depth, can
         local variable_name = variable.name
 
         local path = parent_path .. "." .. variable.name
+        local variable_highlight = hl.variable_highlight(variable, {
+            session = session,
+            path = path,
+            parent_highlight = parent_highlight,
+        })
 
         local is_root, is_ancestor, is_descendant = classify(path, render)
 
@@ -100,9 +105,7 @@ local function show_variables(variables_reference, parent_path, line, depth, can
 
         local prev_variable_value = state.variable_path_to_value[path]
 
-        -- Use actual return from scopes to check if variable was updated
-        -- Allows checking if `setExpression` with js-debug updated the value
-        local updated = prev_variable_value and prev_variable_value ~= variable.value
+        local updated = require("dap-view.tree.changes").observe("scopes", path, variable, render.stamp)
 
         -- Workaround for https://github.com/microsoft/vscode-js-debug/issues/2320
         local value = state.variable_path_to_set_variables[path] and prev_variable_value
@@ -120,7 +123,15 @@ local function show_variables(variables_reference, parent_path, line, depth, can
 
         if not is_descendant then
             if descend then
-                line = show_variables(variable.variablesReference, path, line, depth + 1, canvas, render)
+                line = show_variables(
+                    variable.variablesReference,
+                    path,
+                    line,
+                    depth + 1,
+                    canvas,
+                    render,
+                    variable_highlight
+                )
             end
 
             goto continue
@@ -148,14 +159,20 @@ local function show_variables(variables_reference, parent_path, line, depth, can
 
         state.variable_path_to_parent_line[path] = parent_line
 
-        local type_hl_group = (updated and "WatchUpdated") or hl.hl_from_variable(variable)
+        local type_hl_group = (updated and "WatchUpdated") or variable_highlight or hl.hl_from_variable(variable)
 
         local hl_start = indent + #prefix
 
         ---@type [string, [integer,integer], [integer,integer], integer?, vim.hl.range.Opts?][]
-        local line_highlights = { { "WatchExpr", { line, hl_start }, { line, hl_start + #variable.name } } }
+        local line_highlights = {
+            {
+                variable_highlight or "WatchExpr",
+                { line, variable_highlight and indent or hl_start },
+                { line, hl_start + #variable.name },
+            },
+        }
 
-        if type_hl_group then
+        if type_hl_group and #value > 0 then
             line_highlights[#line_highlights + 1] =
                 { type_hl_group, { line, hl_start + #variable_name + 3 }, { line, -1 } }
         end
@@ -172,7 +189,8 @@ local function show_variables(variables_reference, parent_path, line, depth, can
         state.line_to_variable_path[line] = path
 
         if descend then
-            line = show_variables(variable.variablesReference, path, line, depth + 1, canvas, render)
+            line =
+                show_variables(variable.variablesReference, path, line, depth + 1, canvas, render, variable_highlight)
         end
 
         ::continue::
@@ -203,6 +221,7 @@ M.show = function()
         local session = tmp_session
         render.session = session
         local stamp = context.capture(session)
+        render.stamp = stamp
         local function is_current()
             return version == generation
                 and context.is_current(stamp)

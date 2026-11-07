@@ -202,6 +202,12 @@ local M = {}
 ---@field fold boolean Enable `foldmethod=indent` in the nvim-dap-view window
 ---@field fold_level integer Initial `foldlevel` (only relevant when `fold` is enabled)
 ---@field reroot_depth integer|false Depth from which `:DapViewReroot` is hinted. `false` disables the hint
+---@field variable_highlight boolean|fun(variable: dap.Variable|dap.EvaluateResponse, context: dapview.VariableHighlightContext): string|false|nil Style synthetic variables using DAP hints, or override with a highlight suffix. `nil` uses the default, `false` keeps normal styling.
+
+---@class dapview.VariableHighlightContext
+---@field session? dap.Session
+---@field path string
+---@field parent_highlight? string Highlight suffix inherited from the parent
 
 ---@class (exact) dapview.ConfigStrict
 ---@field decoders? table Owner-side value decoder profiles; see docs/value-decoders.md
@@ -415,6 +421,7 @@ M.config = {
         fold = true,
         fold_level = 2,
         reroot_depth = 6,
+        variable_highlight = true,
     },
 }
 

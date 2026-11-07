@@ -44,12 +44,10 @@ M.evaluate_expression = function(expression, default_expanded, id)
     local previous_expression_view = state.watched_expressions[expression]
         and vim.deepcopy(state.watched_expressions[expression])
 
-    local previous_result = previous_expression_view
-        and previous_expression_view.response
-        and previous_expression_view.response.result
+    local updated = response and require("dap-view.tree.changes").observe("watches", expression, response, stamp)
 
     if previous_expression_view and response then
-        previous_expression_view.updated = previous_result ~= response.result
+        previous_expression_view.updated = updated
     end
 
     if previous_expression_view and err then
@@ -123,6 +121,7 @@ M.expand_variable = function(variables_reference, previous_expansion_result, pat
     local frame_id = session.current_frame and session.current_frame.id
 
     path = path or tostring(variables_reference)
+    local stamp = context.capture(session)
     local err, response = require("dap-view.decoders").resolve_children(
         variables_reference,
         path,
@@ -135,6 +134,8 @@ M.expand_variable = function(variables_reference, previous_expansion_result, pat
     local varible_views = {}
 
     for k, variable in ipairs(response_variables or {}) do
+        local updated =
+            require("dap-view.tree.changes").observe("watches", path .. "." .. variable.name, variable, stamp)
         ---@type dapview.VariableView?
         local previous_variable_view = vim.iter(previous_expansion_result or {}):find(
             ---@param v dapview.VariableView
@@ -157,7 +158,7 @@ M.expand_variable = function(variables_reference, previous_expansion_result, pat
                 previous_variable_view.expanded = false
                 previous_variable_view.updated = false
             else
-                previous_variable_view.updated = previous_variable_view.variable.value ~= variable.value
+                previous_variable_view.updated = updated
 
                 previous_variable_view.variable = variable
             end

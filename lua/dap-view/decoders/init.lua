@@ -266,7 +266,11 @@ function M.from_json(value, name, depth)
     depth = depth or 0
     assert(depth < 64, "JSON exceeds maximum depth")
     if type(value) ~= "table" or value == vim.NIL then
-        return { name = name or "decoded", value = vim.json.encode(value), variablesReference = 0 }
+        local scalar_type = value == vim.NIL and "nil" or type(value)
+        if scalar_type == "number" then
+            scalar_type = value % 1 == 0 and "int" or "float"
+        end
+        return { name = name or "decoded", value = vim.json.encode(value), type = scalar_type, variablesReference = 0 }
     end
     local node = { name = name or "decoded", value = vim.islist(value) and "[]" or "{}", children = {} }
     local keys = vim.tbl_keys(value)

@@ -13,11 +13,16 @@ local M = {}
 ---@param line integer
 ---@param depth integer
 ---@return integer
-local function show_variables(children, reference, line, depth)
+local function show_variables(children, reference, line, depth, parent_highlight)
     local parent_line = line
 
     for _, child in ipairs(children) do
         local variable = child.variable
+        local variable_highlight = hl.variable_highlight(variable, {
+            session = require("dap").session(),
+            path = child.path or variable.name,
+            parent_highlight = parent_highlight,
+        })
 
         local prefix = ""
 
@@ -44,11 +49,15 @@ local function show_variables(children, reference, line, depth)
         util.set_lines(state.bufnr, line, line, true, { indented_content })
 
         local hl_start = depth + #prefix
-        hl.hl_range("WatchExpr", { line, hl_start }, { line, hl_start + #variable.name })
+        hl.hl_range(
+            variable_highlight or "WatchExpr",
+            { line, variable_highlight and depth or hl_start },
+            { line, hl_start + #variable.name }
+        )
 
-        local hl_group = (child.updated and "WatchUpdated") or hl.hl_from_variable(variable)
+        local hl_group = (child.updated and "WatchUpdated") or variable_highlight or hl.hl_from_variable(variable)
 
-        if hl_group then
+        if hl_group and #value > 0 then
             hl.hl_range(hl_group, { line, hl_start + #variable.name + 3 }, { line, -1 })
         end
 
@@ -72,7 +81,7 @@ local function show_variables(children, reference, line, depth)
         end
 
         if child.expanded and child.children ~= nil then
-            line = show_variables(child.children, child.reference, line, depth + 1)
+            line = show_variables(child.children, child.reference, line, depth + 1, variable_highlight)
         end
     end
     return line
@@ -136,6 +145,11 @@ M.show = function()
             local err = view.err
 
             local result = response and response.result or err and fmt.dap_error(err)
+            local variable_highlight = response
+                and hl.variable_highlight(response, {
+                    session = require("dap").session(),
+                    path = expression,
+                })
 
             local prefix = ""
 
@@ -153,13 +167,18 @@ M.show = function()
 
             util.set_lines(state.bufnr, line, line, true, { content })
 
-            hl.hl_range("WatchExpr", { line, #prefix }, { line, #prefix + #expression })
+            hl.hl_range(
+                variable_highlight or "WatchExpr",
+                { line, variable_highlight and 0 or #prefix },
+                { line, #prefix + #expression }
+            )
 
             local hl_group = err and "WatchError"
                 or view.updated and "WatchUpdated"
+                or variable_highlight
                 or response and hl.hl_from_variable(response)
 
-            if hl_group then
+            if hl_group and result and #result > 0 then
                 local hl_start = #prefix + #expression + 3
                 hl.hl_range(hl_group, { line, hl_start }, { line, -1 })
             end
@@ -173,7 +192,7 @@ M.show = function()
             state.expression_views_by_line[line] = { expression = expression, view = view }
 
             if err == nil and view.children ~= nil and view.expanded and response ~= nil then
-                line = show_variables(view.children, response.variablesReference, line, 1)
+                line = show_variables(view.children, response.variablesReference, line, 1, variable_highlight)
             end
         end
 

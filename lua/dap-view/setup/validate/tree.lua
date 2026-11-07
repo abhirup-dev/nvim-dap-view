@@ -11,6 +11,7 @@ function M.validate(config)
         fold = { config.fold, "boolean" },
         fold_level = { config.fold_level, "number" },
         reroot_depth = { config.reroot_depth, { "number", "boolean" } },
+        variable_highlight = { config.variable_highlight, { "boolean", "function" } },
     }, config)
 
     local max_value_width = config.max_value_width

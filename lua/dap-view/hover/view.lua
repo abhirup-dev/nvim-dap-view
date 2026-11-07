@@ -23,7 +23,7 @@ local MAX_HEIGHT = math.floor(vim.go.lines * 0.5)
 ---@param line integer
 ---@param depth integer
 ---@param canvas dapview.Canvas
-local function show_variables(variables_reference, parent_path, line, depth, canvas)
+local function show_variables(variables_reference, parent_path, line, depth, canvas, parent_highlight)
     local err, response =
         require("dap-view.decoders").resolve_children(variables_reference, parent_path, { session = session })
 
@@ -50,6 +50,11 @@ local function show_variables(variables_reference, parent_path, line, depth, can
         local variable_name = variable.name
 
         local path = parent_path .. "." .. variable.name
+        local variable_highlight = hl.variable_highlight(variable, {
+            session = session,
+            path = path,
+            parent_highlight = parent_highlight,
+        })
 
         local is_expanded = state.hover_path_is_expanded[path]
         local is_structured = variable.variablesReference ~= 0
@@ -82,12 +87,17 @@ local function show_variables(variables_reference, parent_path, line, depth, can
         state.hover_path_to_evaluate_name[path] = variable.evaluateName
         state.hover_path_to_parent_reference[path] = variables_reference
 
-        local type_hl_group = hl.hl_from_variable(variable)
+        local type_hl_group = variable_highlight or hl.hl_from_variable(variable)
 
         local hl_start = depth + #prefix
         canvas.highlights[#canvas.highlights + 1] = {
-            { "WatchExpr", { line, hl_start }, { line, hl_start + #variable.name } },
-            type_hl_group and { type_hl_group, { line, hl_start + #variable_name + 3 }, { line, -1 } } or nil,
+            {
+                variable_highlight or "WatchExpr",
+                { line, variable_highlight and depth or hl_start },
+                { line, hl_start + #variable.name },
+            },
+            type_hl_group and #value > 0 and { type_hl_group, { line, hl_start + #variable_name + 3 }, { line, -1 } }
+                or nil,
         }
 
         line = line + 1
@@ -95,7 +105,7 @@ local function show_variables(variables_reference, parent_path, line, depth, can
         state.line_to_hover_path[line] = path
 
         if is_expanded and is_structured then
-            line = show_variables(variable.variablesReference, path, line, depth + 1, canvas)
+            line = show_variables(variable.variablesReference, path, line, depth + 1, canvas, variable_highlight)
         end
     end
 
@@ -136,6 +146,7 @@ M.show = function(bufnr)
             variablesReference = hover.response.variablesReference or 0,
             memoryReference = hover.response.memoryReference,
         }, expr, session)
+        local variable_highlight = hl.variable_highlight(hover.response, { session = session, path = expr })
         if variable.variablesReference ~= 0 then
             local config = setup.config
 
@@ -149,18 +160,23 @@ M.show = function(bufnr)
 
             canvas.contents[#canvas.contents + 1] = trimmed_content
 
-            local type_hl_group = hl.hl_from_variable(hover.response)
+            local type_hl_group = variable_highlight or hl.hl_from_variable(hover.response)
 
             local hl_start = #prefix
             canvas.highlights[#canvas.highlights + 1] = {
-                { "WatchExpr", { height, hl_start }, { height, hl_start + #expr } },
-                type_hl_group and { type_hl_group, { height, hl_start + #expr + 3 }, { height, -1 } } or nil,
+                {
+                    variable_highlight or "WatchExpr",
+                    { height, variable_highlight and 0 or hl_start },
+                    { height, hl_start + #expr },
+                },
+                type_hl_group and #value > 0 and { type_hl_group, { height, hl_start + #expr + 3 }, { height, -1 } }
+                    or nil,
             }
 
             height = height + 1
 
             if hover.expanded then
-                height = show_variables(variable.variablesReference, expr, height, 1, canvas)
+                height = show_variables(variable.variablesReference, expr, height, 1, canvas, variable_highlight)
             end
 
             width = math.max(width, fn.strdisplaywidth(trimmed_content))
@@ -171,7 +187,7 @@ M.show = function(bufnr)
 
             width = fn.strdisplaywidth(result)
 
-            local type_hl_group = hl.hl_from_variable(hover.response)
+            local type_hl_group = variable_highlight or hl.hl_from_variable(hover.response)
 
             canvas.highlights[#canvas.highlights + 1] = {
                 type_hl_group and { type_hl_group, { height, 0 }, { height, -1 } } or nil,
