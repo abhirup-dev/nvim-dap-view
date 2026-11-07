@@ -19,6 +19,8 @@ test-go:
 
 test-lua:
 	$(NVIM) --headless -u NONE -l tests/run.lua
+	$(NVIM) --headless -u NONE -l tests/control_lifecycle.lua
+	$(NVIM) --headless -u NONE -l tests/preview_boundary.lua
 	$(NVIM) --headless -u NONE -l tests/sidecar_lifecycle.lua
 
 fmt:

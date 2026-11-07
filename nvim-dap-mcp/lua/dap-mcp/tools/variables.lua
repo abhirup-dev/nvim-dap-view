@@ -101,8 +101,15 @@ registry.register({
     handler = function(args)
         local session = util.need_session()
 
-        if type(args.variables_reference) ~= "number" then
-            util.fail("invalid_argument", "`variables_reference` must be a number")
+        if
+            type(args.variables_reference) ~= "number"
+            or args.variables_reference <= 0
+            or args.variables_reference % 1 ~= 0
+        then
+            util.fail(
+                "invalid_argument",
+                "`variables_reference` must be a positive integer; decoder previews are read-only"
+            )
         end
         if type(args.name) ~= "string" or type(args.value) ~= "string" then
             util.fail("invalid_argument", "`name` and `value` must be strings")

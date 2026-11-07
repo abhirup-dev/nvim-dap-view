@@ -4,6 +4,7 @@
 local registry = require("dap-mcp.registry")
 local util = require("dap-mcp.util")
 
+local active_run
 local ACTIONS = {
     step_over = true,
     step_into = true,
@@ -46,6 +47,9 @@ local function run_to_line(session, bufnr, lnum)
     local dap = require("dap")
     local breakpoints = require("dap.breakpoints")
 
+    if active_run then
+        active_run()
+    end
     local before = breakpoints.get()
     breakpoints.clear()
     breakpoints.set({}, bufnr, lnum)
@@ -61,36 +65,92 @@ local function run_to_line(session, bufnr, lnum)
     end
 
     local restored = false
-    local function restore()
+    local function restore(closed)
         if restored then
             return
         end
         restored = true
+        active_run = nil
 
         dap.listeners.before.event_stopped["dap-mcp.run_to_line"] = nil
         dap.listeners.before.event_terminated["dap-mcp.run_to_line"] = nil
+        dap.listeners.before.setBreakpoints["dap-mcp.run_to_line"] = nil
+        dap.listeners.before.continue["dap-mcp.run_to_line"] = nil
+        session.on_close["dap-mcp.run_to_line"] = nil
 
-        breakpoints.clear()
-        for buf, buf_bps in pairs(before) do
-            for _, bp in pairs(buf_bps) do
-                breakpoints.set({
-                    condition = bp.condition,
-                    log_message = bp.logMessage,
-                    hit_condition = bp.hitCondition,
-                }, buf, bp.line)
+        local current = breakpoints.get()
+        for _, bp in pairs(current[bufnr] or {}) do
+            if bp.line == lnum and not bp.condition and not bp.logMessage and not bp.hitCondition then
+                breakpoints.remove(bufnr, lnum)
+                break
             end
         end
-        session:set_breakpoints(before, nil)
+        current = breakpoints.get()
+        for buf, buf_bps in pairs(before) do
+            for _, bp in pairs(buf_bps) do
+                local occupied = false
+                for _, existing in pairs(current[buf] or {}) do
+                    if existing.line == bp.line then
+                        occupied = true
+                        break
+                    end
+                end
+                if not occupied and vim.api.nvim_buf_is_valid(buf) then
+                    breakpoints.set({
+                        condition = bp.condition,
+                        log_message = bp.logMessage,
+                        hit_condition = bp.hitCondition,
+                    }, buf, bp.line)
+                end
+            end
+        end
+        if not closed and not session.closed then
+            local merged = breakpoints.get()
+            for buf in pairs(temporary) do
+                merged[buf] = merged[buf] or {}
+            end
+            pcall(session.set_breakpoints, session, merged, nil)
+        end
     end
 
-    dap.listeners.before.event_stopped["dap-mcp.run_to_line"] = restore
-    dap.listeners.before.event_terminated["dap-mcp.run_to_line"] = restore
+    active_run = restore
+    local function on_event(owner)
+        if owner == session then
+            restore()
+        end
+    end
+    local function on_response(owner, err)
+        if owner == session and err then
+            restore()
+        end
+    end
+    dap.listeners.before.event_stopped["dap-mcp.run_to_line"] = on_event
+    dap.listeners.before.event_terminated["dap-mcp.run_to_line"] = on_event
+    dap.listeners.before.setBreakpoints["dap-mcp.run_to_line"] = on_response
+    dap.listeners.before.continue["dap-mcp.run_to_line"] = on_response
+    session.on_close["dap-mcp.run_to_line"] = function(owner)
+        if owner == session then
+            vim.schedule(function()
+                restore(true)
+            end)
+        end
+    end
 
-    session:set_breakpoints(temporary, function()
+    local ok, err = pcall(session.set_breakpoints, session, temporary, function()
         -- `_step('continue')` rather than `dap.continue()`: the latter re-enters
         -- configuration selection when it thinks no session is focused.
-        session:_step("continue")
+        if not restored and not session.closed then
+            local stepped, step_err = pcall(session._step, session, "continue")
+            if not stepped then
+                restore()
+                vim.notify(tostring(step_err), vim.log.levels.ERROR)
+            end
+        end
     end)
+    if not ok then
+        restore()
+        error(err)
+    end
 end
 
 registry.register({
