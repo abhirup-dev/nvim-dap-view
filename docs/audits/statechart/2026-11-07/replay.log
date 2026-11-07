@@ -1,6 +1,0 @@
-REPLAY CurrentContext stale_js_value=OLD_SESSION
-REPLAY RequestedHover requested=new published=OLD_HOVER
-REPLAY RemovedWatchStaysRemoved published=REINSERTED
-REPLAY NoOldCallback host=tab key_hits=1
-REPLAY PreviewReadOnly ok=true adapter_reference=-1
-REPLAY WatchTooltip ok=false error=...es/nvim-dap-view/t3-2672284c/lua/dap-view/tree/value.lua:31: attempt to index field 'variable' (a nil value)

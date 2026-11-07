@@ -50,7 +50,8 @@ by `5df148d`. These are runtime findings, not additional formal-model results.
 All six deadlock checks hold. No temporal/liveness properties, fairness,
 exhaustive payload validation, arbitrary interleavings or OS cleanup guarantees
 were proven. The full audit describes the precise omissions. Raw TLC output
-is retained beside each report, including individual rule traces when emitted.
+and one-time validation logs remain in Git at commit `1ea5651`; they are not
+kept in the checkout. Re-running the models produces fresh traces.
 
 ## Reproduce the original model checks
 
