@@ -5,7 +5,10 @@ Run `bd prime` when context is missing or stale; it supplies the detailed workfl
 
 Issues live in a local Dolt database. Sync uses `refs/dolt/data` on the Git remote,
 separately from code branches. `.beads/issues.jsonl` is a passive export, not the
-source of truth or normal sync mechanism. See [Beads sync concepts](https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md).
+source of truth or normal sync mechanism. See [Beads sync concepts](https://github.com/gastownhall/beads/blob/main/docs/core-concepts/sync-concepts.md).
+On a new machine, use `bd bootstrap --yes`, not a fresh `bd init`. Follow
+[the project sync workflow](.beads/README.md) for authorized pull/push operations
+and preserved recovery history.
 
 ## Non-interactive shell commands
 

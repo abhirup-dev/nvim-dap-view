@@ -61,9 +61,9 @@
 # - linear.api_key  → use LINEAR_API_KEY env var instead
 # - github.token    → use GITHUB_TOKEN env var instead
 
-sync.remote: "git+ssh://git@github-me/abhirup-dev/nvim-dap-view.git"
+sync.remote: "git+ssh://git@github.com/abhirup-dev/nvim-dap-view.git"
 export:
     auto: true
-    git-add: true
+    git-add: false
 routing:
     mode: maintainer
