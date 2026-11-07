@@ -1,0 +1,9 @@
+  ok   synthetic name is one printable line
+  ok   synthetic name is one printable line
+  ok   synthetic name is one printable line
+  ok   decoded key is preserved through JSON escaping
+  ok   decoded key is preserved through JSON escaping
+  ok   decoded key is preserved through JSON escaping
+  ok   watch renderer accepts valid decoded JSON control-character keys
+
+7 passed, 0 failed

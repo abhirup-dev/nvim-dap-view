@@ -134,6 +134,7 @@ local M = {}
 ---@field toggle dapview.Keymap
 ---@field jump_to_parent dapview.Keymap
 ---@field set_value dapview.Keymap
+---@field show_value dapview.Keymap Show the full, untruncated value in a float
 
 ---@class dapview.HoverKeymapsConfig : dapview.ScopesKeymapsConfig
 ---@field quit dapview.Keymap
@@ -164,7 +165,46 @@ local M = {}
 ---@field suffix dapview.VirtualTextFormatter
 ---@field position dapview.VirtualTextPosition
 
+---@class dapview.HostSplitConfig
+---@field restore_layout boolean Snapshot the window layout before opening and restore it after closing
+
+---@alias dapview.TabLayout "code-right"|"code-left"|"full"
+
+---@class dapview.HostTabConfig
+---@field layout dapview.TabLayout Where the code window sits relative to the dap-view window. "full" means no code window
+---@field follow_frame boolean On `stopped`, open the frame's source in the tab's code window
+---@field close_on_terminate boolean Close the tabpage when the session terminates
+
+---@class dapview.HostRemotePaneConfig
+---@field kind "split"|"tab" A whole tab gives the viewer real space; a narrow split renders badly
+---@field direction "right"|"down"|"left"|"up" Only relevant for `kind = "split"`. herdr splits `right` and `down` only
+---@field size number Fraction of the parent when below 1, cells otherwise
+---@field label string Tab label, where the multiplexer has one
+
+---@class dapview.HostRemoteConfig
+---@field multiplexer dapview.MuxName
+---@field spawn? fun(cmd: string, opts: dapview.MuxSpawnOpts): string? Required by the `custom` multiplexer. Returns an opaque handle
+---@field close? fun(handle: string) Optional counterpart to `spawn`
+---@field pane dapview.HostRemotePaneConfig
+---@field nvim_args string[]
+---@field mirror_highlights boolean
+---@field close_on_terminate boolean
+
+---@class dapview.HostConfig
+---@field default dapview.HostName Host that owns the dap-view window
+---@field split dapview.HostSplitConfig
+---@field tab dapview.HostTabConfig
+---@field remote dapview.HostRemoteConfig
+---@class dapview.TreeConfig
+---@field max_value_width integer|"auto"|false Clamp the value segment of a variable to this many display cells. `"auto"` uses the available window width minus the name column. `false` disables clamping.
+---@field ellipsis string Appended to a clamped value
+---@field indent_width integer|false Buffer local `tabstop` for the view, i.e. how many cells one tree level takes. `false` leaves `tabstop` alone.
+---@field fold boolean Enable `foldmethod=indent` in the nvim-dap-view window
+---@field fold_level integer Initial `foldlevel` (only relevant when `fold` is enabled)
+---@field reroot_depth integer|false Depth from which `:DapViewReroot` is hinted. `false` disables the hint
+
 ---@class (exact) dapview.ConfigStrict
+---@field decoders? table Owner-side value decoder profiles; see docs/value-decoders.md
 ---@field winbar dapview.WinbarConfig
 ---@field windows dapview.WindowsConfig
 ---@field help dapview.HelpConfig
@@ -176,6 +216,8 @@ local M = {}
 ---@field switchbuf string|dapview.SwitchBufFun Control how to jump when selecting a breakpoint or a call in the stack
 ---@field auto_toggle boolean|"keep_terminal"|"open_term"|"open"
 ---@field follow_tab boolean|fun(adapter?: string): boolean Reopen dapview when switching tabs
+---@field host dapview.HostConfig Where the dap-view window lives
+---@field tree dapview.TreeConfig Variable tree readability
 
 ---@type dapview.ConfigStrict
 M.config = {
@@ -226,11 +268,13 @@ M.config = {
             toggle = { "<CR>", "<2-LeftMouse>" },
             jump_to_parent = "[[",
             set_value = "s",
+            show_value = "K",
         },
         watches = {
             toggle = { "<CR>", "<2-LeftMouse>" },
             jump_to_parent = "[[",
             set_value = "s",
+            show_value = "K",
             copy_value = "c",
             delete_expression = "d",
             append_expression = "a",
@@ -344,6 +388,34 @@ M.config = {
     switchbuf = "usetab,uselast",
     auto_toggle = false,
     follow_tab = false,
+    host = {
+        default = "split",
+        split = {
+            restore_layout = true,
+        },
+        tab = {
+            layout = "code-right",
+            follow_frame = true,
+            close_on_terminate = true,
+        },
+        remote = {
+            multiplexer = "herdr",
+            spawn = nil,
+            close = nil,
+            pane = { kind = "tab", direction = "right", size = 0.35, label = "dap-view" },
+            nvim_args = { "--clean" },
+            mirror_highlights = true,
+            close_on_terminate = true,
+        },
+    },
+    tree = {
+        max_value_width = 60,
+        ellipsis = "…",
+        indent_width = 2,
+        fold = true,
+        fold_level = 2,
+        reroot_depth = 6,
+    },
 }
 
 return M

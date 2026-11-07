@@ -4,6 +4,7 @@ local setup = require("dap-view.setup")
 local util = require("dap-view.util")
 local hl = require("dap-view.util.hl")
 local fmt = require("dap-view.util.fmt")
+local truncate = require("dap-view.util.truncate")
 
 local M = {}
 
@@ -21,17 +22,24 @@ local function show_variables(children, reference, line, depth)
         local prefix = ""
 
         local icons = setup.config.icons
-        if variable.variablesReference > 0 then
+        if variable.variablesReference ~= 0 then
             prefix = child.expanded and icons.expanded or icons.collapsed
         end
 
-        local value = variable.value
-        local content = prefix .. variable.name .. (#value > 0 and " = " or "") .. value
+        local value = require("dap-view.decoders").format_value(
+            variable,
+            child.path or variable.name,
+            { session = require("dap").session() }
+        )
 
-        -- Can't have linebreaks with nvim_buf_set_lines
-        local trimmed_content = content:gsub("\n+", " ")
+        local separator = #value > 0 and " = " or ""
 
-        local indented_content = string.rep("\t", depth) .. trimmed_content
+        local display_value, is_truncated = truncate.format_value(value, {
+            name_col = truncate.name_col(depth, prefix .. variable.name .. separator),
+            variable = variable,
+        })
+
+        local indented_content = string.rep("\t", depth) .. prefix .. variable.name .. separator .. display_value
 
         util.set_lines(state.bufnr, line, line, true, { indented_content })
 
@@ -42,6 +50,10 @@ local function show_variables(children, reference, line, depth)
 
         if hl_group then
             hl.hl_range(hl_group, { line, hl_start + #variable.name + 3 }, { line, -1 })
+        end
+
+        if is_truncated then
+            hl.hl_range("Truncated", { line, hl.ellipsis_col(indented_content) }, { line, -1 }, nil, hl.ELLIPSIS_OPTS)
         end
 
         line = line + 1
@@ -66,7 +78,20 @@ local function show_variables(children, reference, line, depth)
     return line
 end
 
+local function fold_paths()
+    local paths = {}
+    for line, entry in pairs(state.variable_views_by_line) do
+        paths[line] = entry.view.path
+    end
+    for line, entry in pairs(state.expression_views_by_line) do
+        paths[line] = entry.expression
+    end
+    return paths
+end
+
 M.show = function()
+    local folds = require("dap-view.tree.fold")
+    local closed = state.winnr and folds.capture(state.winnr, fold_paths()) or {}
     -- New expressions may prepended
     -- And lines may be no longer valid if a variable changes (e.g., array's size changes)
     -- Hence, lines may change unexpectedly
@@ -115,16 +140,18 @@ M.show = function()
             local prefix = ""
 
             local icons = setup.config.icons
-            if view.children ~= nil then
+            if response and response.variablesReference ~= 0 then
                 prefix = view.expanded and icons.expanded or icons.collapsed
             end
 
-            local content = prefix .. expression .. " = " .. result
+            local display_result, is_truncated = truncate.format_value(result, {
+                name_col = truncate.name_col(0, prefix .. expression .. " = "),
+                variable = response,
+            })
 
-            -- Can't have linebreaks with nvim_buf_set_lines
-            local trimmed_content = content:gsub("\n+", " ")
+            local content = prefix .. expression .. " = " .. display_result
 
-            util.set_lines(state.bufnr, line, line, true, { trimmed_content })
+            util.set_lines(state.bufnr, line, line, true, { content })
 
             hl.hl_range("WatchExpr", { line, #prefix }, { line, #prefix + #expression })
 
@@ -137,6 +164,10 @@ M.show = function()
                 hl.hl_range(hl_group, { line, hl_start }, { line, -1 })
             end
 
+            if is_truncated then
+                hl.hl_range("Truncated", { line, hl.ellipsis_col(content) }, { line, -1 }, nil, hl.ELLIPSIS_OPTS)
+            end
+
             line = line + 1
 
             state.expression_views_by_line[line] = { expression = expression, view = view }
@@ -147,6 +178,7 @@ M.show = function()
         end
 
         util.set_lines(state.bufnr, line, -1, true, {})
+        folds.restore(state.winnr, fold_paths(), closed)
     end
 end
 

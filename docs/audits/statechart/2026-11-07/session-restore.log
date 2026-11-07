@@ -1,0 +1,17 @@
+
+== write the session / host=tab
+  ok   child Neovim wrote a session file
+  ok   the session records no repl buffer
+  ok   the session records no terminal buffer
+  ok   the session does not record the dap-view buffer (unlisted + nofile)
+  ok   the session records the tab host's marker global
+
+== restore / host=tab
+  ok   we are on a valid tabpage
+  ok   the marker brought the hook to life and it reopened the view
+  ok   no husk left next to the reopened debugger tabpage
+  ok   exactly one tabpage without a dap-view window: the user's own
+  ok   the tab host landed us in its own tabpage
+  ok   the marker describes the tabpage the hook opened, not the one it reclaimed
+
+11 passed, 0 failed

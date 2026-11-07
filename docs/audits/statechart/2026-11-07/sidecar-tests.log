@@ -1,0 +1,10 @@
+dap-mcp: sidecar exited with code 1: nvim-dap-mcp: listen on 127.0.0.1:62704: listen tcp 127.0.0.1:62704: bind: address already in use
+  ok occupied port fails
+  ok failed startup claims no process or URL
+  ok reports bind error: sidecar exited with code 1: nvim-dap-mcp: listen on 127.0.0.1:62704: listen tcp 127.0.0.1:62704: bind: address already in use
+  ok starts after port released
+  ok stops
+  ok immediate restart succeeds
+  ok old callback preserves new process
+  ok early exit fails
+  ok early exit is bounded

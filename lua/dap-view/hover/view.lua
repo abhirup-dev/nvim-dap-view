@@ -23,7 +23,8 @@ local MAX_HEIGHT = math.floor(vim.go.lines * 0.5)
 ---@param depth integer
 ---@param canvas dapview.Canvas
 local function show_variables(variables_reference, parent_path, line, depth, canvas)
-    local err, response = session:request("variables", { variablesReference = variables_reference })
+    local err, response =
+        require("dap-view.decoders").resolve_children(variables_reference, parent_path, { session = session })
 
     if err then
         local err_content = string.rep("\t", depth + 1) .. fmt.dap_error(err)
@@ -50,7 +51,7 @@ local function show_variables(variables_reference, parent_path, line, depth, can
         local path = parent_path .. "." .. variable.name
 
         local is_expanded = state.hover_path_is_expanded[path]
-        local is_structured = variable.variablesReference > 0
+        local is_structured = variable.variablesReference ~= 0
 
         local prefix = ""
 
@@ -58,7 +59,7 @@ local function show_variables(variables_reference, parent_path, line, depth, can
             prefix = is_expanded and config.icons.expanded or config.icons.collapsed
         end
 
-        local value = variable.value
+        local value = require("dap-view.decoders").format_value(variable, path, { session = session })
         local content = prefix .. variable_name .. (#value > 0 and " = " or "") .. value
 
         -- Can't have linebreaks with nvim_buf_set_lines
@@ -106,6 +107,8 @@ M.show = function(bufnr)
     local hover = assert(state.hovered_expression, "has hover state")
 
     session = assert(require("dap").session(), "has active session")
+    local stamp = require("dap-view.decoders").context(session, expr)
+    state.line_to_hover_path = {}
 
     ---@type dapview.Canvas
     local canvas = { contents = {}, highlights = {} }
@@ -124,11 +127,19 @@ M.show = function(bufnr)
 
         height = height + 1
     elseif hover.response then
-        if hover.response.variablesReference > 0 then
+        local variable = require("dap-view.decoders").prepare({
+            name = expr,
+            value = hover.response.result,
+            type = hover.response.type,
+            evaluateName = expr,
+            variablesReference = hover.response.variablesReference or 0,
+            memoryReference = hover.response.memoryReference,
+        }, expr, session)
+        if variable.variablesReference ~= 0 then
             local config = setup.config
 
             local prefix = hover.expanded and config.icons.expanded or config.icons.collapsed
-            local value = hover.response.result
+            local value = variable.value
 
             local content = prefix .. expr .. (#value > 0 and " = " or "") .. value
 
@@ -148,7 +159,7 @@ M.show = function(bufnr)
             height = height + 1
 
             if hover.expanded then
-                height = show_variables(hover.response.variablesReference, expr, height, 1, canvas)
+                height = show_variables(variable.variablesReference, expr, height, 1, canvas)
             end
 
             width = math.max(width, fn.strdisplaywidth(trimmed_content))
@@ -167,8 +178,16 @@ M.show = function(bufnr)
 
             height = height + 1
         end
+    else
+        local message = "No result returned by the debug adapter"
+        canvas.contents[#canvas.contents + 1] = message
+        width = fn.strdisplaywidth(message)
+        height = height + 1
     end
 
+    if not require("dap-view.decoders").is_current(stamp) or not vim.api.nvim_buf_is_valid(bufnr) then
+        return { 1, 1 }
+    end
     util.set_lines(bufnr, 0, height, false, canvas.contents)
 
     for _, highlights in ipairs(canvas.highlights) do

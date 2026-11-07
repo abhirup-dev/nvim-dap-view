@@ -1,0 +1,13 @@
+---
+title: "Startup reply fencing"
+---
+stateDiagram-v2
+  s0: idle
+  s1: waiting
+  s2: closed
+  s3: ready
+  [*] --> s0
+  s0 --> s1: spawn viewer and request readiness
+  s1 --> s2: timeout or cancel releases resources
+  s1 --> s3: current startup reply arrives
+  s3 --> s2: timeout or cancel releases resources

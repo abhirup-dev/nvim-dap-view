@@ -11,7 +11,8 @@ M.get_anchor = function(width)
 
     local anchor_y = anchor_below and "N" or "S"
 
-    local wincol = fn.getmousepos().column
+    -- Screen column of the cursor, since the float is anchored to it
+    local wincol = fn.screencol()
 
     local anchor_x = (wincol + width <= vim.o.columns) and "W" or "E"
 

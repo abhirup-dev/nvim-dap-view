@@ -44,6 +44,7 @@ local define_base_links = function()
     hl_create("WatchExpr", "Identifier")
     hl_create("WatchError", "DiagnosticError")
     hl_create("WatchUpdated", "DiagnosticVirtualTextWarn")
+    hl_create("Truncated", "Comment")
 
     hl_create("Boolean", "Boolean")
     hl_create("String", "String")

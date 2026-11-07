@@ -6,30 +6,61 @@ local setup = require("dap-view.setup")
 local util = require("dap-view.util")
 local hl = require("dap-view.util.hl")
 local fmt = require("dap-view.util.fmt")
+local truncate = require("dap-view.util.truncate")
 
 local M = {}
 
----@type dap.Session
-local session
+-- A render may yield on every variables request. Keep traversal and indices private
+-- until the newest render can publish them together.
+local generation = 0
+local shared_state = state
+local index_keys = {
+    "line_to_scope_name",
+    "line_to_variable_path",
+    "variable_path_to_value",
+    "variable_path_to_name",
+    "variable_path_to_evaluate_name",
+    "variable_path_to_parent_reference",
+    "variable_path_to_reference",
+    "variable_path_to_depth",
+    "variable_path_to_parent_line",
+}
+
+---@param path string
+---@return boolean is_root
+---@return boolean is_ancestor
+---@return boolean is_descendant
+local function classify(path, render)
+    if render.root_path == nil then
+        return false, false, true
+    end
+
+    return path == render.root_path,
+        render.root_path:sub(1, #path + 1) == path .. ".",
+        path:sub(1, #render.root_path + 1) == render.root_path .. "."
+end
 
 ---Redrawing is jittery if we set lines on the fly
 ---Prevent that by batching all buffer updates
 ---Also need to handle concurrent calls, by creating multiple instances
 ---@class dapview.Canvas
 ---@field contents string[]
----@field highlights [string, [integer,integer], [integer,integer]][][]
+---@field highlights [string, [integer,integer], [integer,integer], integer?, vim.hl.range.Opts?][][]
 
 ---@param variables_reference integer
 ---@param parent_path string
 ---@param line integer
 ---@param depth integer
 ---@param canvas dapview.Canvas
-local function show_variables(variables_reference, parent_path, line, depth, canvas)
+local function show_variables(variables_reference, parent_path, line, depth, canvas, render)
+    local state = render.state
+    local session = render.session
     local parent_line = line
-    local err, response = session:request("variables", { variablesReference = variables_reference })
+    local err, response =
+        require("dap-view.decoders").resolve_children(variables_reference, parent_path, { session = session })
 
     if err then
-        local err_content = string.rep("\t", depth + 1) .. fmt.dap_error(err)
+        local err_content = string.rep("\t", math.max(depth + 1 - (render.root_depth or 0), 0)) .. fmt.dap_error(err)
 
         canvas.contents[#canvas.contents + 1] = err_content
 
@@ -44,7 +75,7 @@ local function show_variables(variables_reference, parent_path, line, depth, can
 
     local config = setup.config
     local sort_variables = config.render.sort_variables
-    if sort_variables then
+    if sort_variables and variables_reference >= 0 then
         table.sort(variables, sort_variables)
     end
 
@@ -53,26 +84,18 @@ local function show_variables(variables_reference, parent_path, line, depth, can
 
         local path = parent_path .. "." .. variable.name
 
-        local is_expanded = state.variable_path_is_expanded[path]
-        local is_structured = variable.variablesReference > 0
+        local is_root, is_ancestor, is_descendant = classify(path, render)
 
-        local prefix = ""
-
-        if is_structured then
-            prefix = is_expanded and config.icons.expanded or config.icons.collapsed
+        if is_root then
+            render.root_depth = depth
         end
 
-        -- Workaround for https://github.com/microsoft/vscode-js-debug/issues/2320
-        local value = state.variable_path_to_set_variables[path] and state.variable_path_to_value[path]
-            or variable.value
-        local content = prefix .. variable_name .. (#value > 0 and " = " or "") .. value
+        if is_root or is_ancestor then
+            render.breadcrumb[#render.breadcrumb + 1] = variable.name
+        end
 
-        -- Can't have linebreaks with nvim_buf_set_lines
-        local trimmed_content = content:gsub("\n+", " ")
-
-        local indented_content = string.rep("\t", depth) .. trimmed_content
-
-        canvas.contents[#canvas.contents + 1] = indented_content
+        local is_expanded = state.variable_path_is_expanded[path]
+        local is_structured = variable.variablesReference ~= 0
 
         local prev_variable_value = state.variable_path_to_value[path]
 
@@ -80,33 +103,93 @@ local function show_variables(variables_reference, parent_path, line, depth, can
         -- Allows checking if `setExpression` with js-debug updated the value
         local updated = prev_variable_value and prev_variable_value ~= variable.value
 
+        -- Workaround for https://github.com/microsoft/vscode-js-debug/issues/2320
+        local value = state.variable_path_to_set_variables[path] and prev_variable_value
+            or require("dap-view.decoders").format_value(variable, path, { session = session })
+
         state.variable_path_to_value[path] = value
         state.variable_path_to_name[path] = variable.name
-        state.variable_path_to_parent_line[path] = parent_line
         state.variable_path_to_evaluate_name[path] = variable.evaluateName
         state.variable_path_to_parent_reference[path] = variables_reference
+        state.variable_path_to_reference[path] = variable.variablesReference
+        state.variable_path_to_depth[path] = depth
+
+        -- Always descend towards the re-root target, even through nodes the user collapsed
+        local descend = is_structured and (is_expanded or is_root or is_ancestor)
+
+        if not is_descendant then
+            if descend then
+                line = show_variables(variable.variablesReference, path, line, depth + 1, canvas, render)
+            end
+
+            goto continue
+        end
+
+        local prefix = ""
+
+        if is_structured then
+            prefix = is_expanded and config.icons.expanded or config.icons.collapsed
+        end
+
+        local separator = #value > 0 and " = " or ""
+
+        local indent = depth - (render.root_depth or 0)
+
+        local display_value, is_truncated = truncate.format_value(value, {
+            name_col = truncate.name_col(indent, prefix .. variable_name .. separator),
+            variable = variable,
+            path = path,
+        })
+
+        local indented_content = string.rep("\t", indent) .. prefix .. variable_name .. separator .. display_value
+
+        canvas.contents[#canvas.contents + 1] = indented_content
+
+        state.variable_path_to_parent_line[path] = parent_line
 
         local type_hl_group = (updated and "WatchUpdated") or hl.hl_from_variable(variable)
 
-        local hl_start = depth + #prefix
-        canvas.highlights[#canvas.highlights + 1] = {
-            { "WatchExpr", { line, hl_start }, { line, hl_start + #variable.name } },
-            type_hl_group and { type_hl_group, { line, hl_start + #variable_name + 3 }, { line, -1 } } or nil,
-        }
+        local hl_start = indent + #prefix
+
+        ---@type [string, [integer,integer], [integer,integer], integer?, vim.hl.range.Opts?][]
+        local line_highlights = { { "WatchExpr", { line, hl_start }, { line, hl_start + #variable.name } } }
+
+        if type_hl_group then
+            line_highlights[#line_highlights + 1] =
+                { type_hl_group, { line, hl_start + #variable_name + 3 }, { line, -1 } }
+        end
+
+        if is_truncated then
+            line_highlights[#line_highlights + 1] =
+                { "Truncated", { line, hl.ellipsis_col(indented_content) }, { line, -1 }, nil, hl.ELLIPSIS_OPTS }
+        end
+
+        canvas.highlights[#canvas.highlights + 1] = line_highlights
 
         line = line + 1
 
         state.line_to_variable_path[line] = path
 
-        if is_expanded and is_structured then
-            line = show_variables(variable.variablesReference, path, line, depth + 1, canvas)
+        if descend then
+            line = show_variables(variable.variablesReference, path, line, depth + 1, canvas, render)
         end
+
+        ::continue::
     end
 
     return line
 end
 
 M.show = function()
+    generation = generation + 1
+    local version = generation
+    local state = vim.tbl_extend("force", {}, shared_state)
+    for _, key in ipairs(index_keys) do
+        state[key] = vim.deepcopy(shared_state[key])
+    end
+    state.variable_path_is_expanded = vim.deepcopy(shared_state.variable_path_is_expanded)
+    state.tree_root_stack = vim.deepcopy(shared_state.tree_root_stack)
+    local render = { state = state, breadcrumb = {} }
     if util.is_buf_valid(state.bufnr) and util.is_win_valid(state.winnr) then
         local tmp_session = dap.session()
 
@@ -116,7 +199,19 @@ M.show = function()
 
         ---@cast tmp_session dap.Session
 
-        session = tmp_session
+        local session = tmp_session
+        render.session = session
+        local stamp = require("dap-view.decoders").context(session, "scopes")
+        local function is_current()
+            return version == generation
+                and require("dap-view.decoders").is_current(stamp)
+                and shared_state.current_section == "scopes"
+                and shared_state.bufnr == state.bufnr
+                and shared_state.winnr == state.winnr
+                and util.is_buf_valid(state.bufnr)
+                and util.is_win_valid(state.winnr)
+                and vim.deep_equal(shared_state.tree_root_stack, state.tree_root_stack)
+        end
 
         local current_frame = session.current_frame
 
@@ -170,27 +265,70 @@ M.show = function()
             state.line_to_variable_path[k] = nil
         end
 
+        render.root_path = state.tree_root_stack[#state.tree_root_stack]
+        render.root_depth = nil
+        render.breadcrumb = {}
+
         ---@type dapview.Canvas
         local canvas = { contents = {}, highlights = {} }
 
+        if render.root_path then
+            -- Placeholder: the breadcrumb is only known once the traversal reached the root
+            canvas.contents[1] = ""
+            canvas.highlights[1] = { { "Thread", { 0, 0 }, { 0, -1 } } }
+
+            line = 1
+        end
+
         for _, scope in ipairs(filtered_scopes) do
-            canvas.contents[#canvas.contents + 1] = scope.name
-
-            canvas.highlights[#canvas.highlights + 1] = { { "Thread", { line, 0 }, { line, -1 } } }
-
-            line = line + 1
-
-            state.line_to_scope_name[line] = scope.name
-
             local prev_line = line
 
-            if not vim.tbl_contains(state.collapsed_scopes, scope.name) then
-                line = show_variables(scope.variablesReference, scope.name, line, 1, canvas)
+            if render.root_path then
+                -- Only the scope holding the re-root target is worth descending
+                if render.root_path == scope.name or render.root_path:sub(1, #scope.name + 1) == scope.name .. "." then
+                    render.breadcrumb[#render.breadcrumb + 1] = scope.name
+
+                    line = show_variables(scope.variablesReference, scope.name, line, 1, canvas, render)
+                end
+            else
+                canvas.contents[#canvas.contents + 1] = scope.name
+
+                canvas.highlights[#canvas.highlights + 1] = { { "Thread", { line, 0 }, { line, -1 } } }
+
+                line = line + 1
+
+                state.line_to_scope_name[line] = scope.name
+
+                prev_line = line
+
+                if not vim.tbl_contains(state.collapsed_scopes, scope.name) then
+                    line = show_variables(scope.variablesReference, scope.name, line, 1, canvas, render)
+                end
             end
 
             if prev_line ~= line then
                 has_variables = true
             end
+        end
+
+        if not is_current() then
+            return
+        end
+
+        if render.root_path then
+            if render.root_depth == nil then
+                -- The node is gone: the frame changed, or an ancestor no longer has it. Pop back up
+                table.remove(shared_state.tree_root_stack)
+
+                vim.notify("Re-root target is no longer in the tree, popping one level up")
+
+                return M.show()
+            end
+
+            canvas.contents[1] = table.concat(render.breadcrumb, " ▸ ")
+
+            -- A subtree with no children is still worth showing, if only for its breadcrumb
+            has_variables = true
         end
 
         -- Sometimes the JS debug adapter simply does not return any variables at all, in spite of
@@ -209,15 +347,21 @@ M.show = function()
             return
         end
 
+        local folds = require("dap-view.tree.fold")
+        local closed = folds.capture(state.winnr, shared_state.line_to_variable_path, shared_state.line_to_scope_name)
+        for _, key in ipairs(index_keys) do
+            shared_state[key] = state[key]
+        end
         util.set_lines(state.bufnr, 0, line - 1, false, canvas.contents)
 
         for _, highlights in ipairs(canvas.highlights) do
             for _, highlight in ipairs(highlights) do
-                hl.hl_range(highlight[1], highlight[2], highlight[3])
+                hl.hl_range(highlight[1], highlight[2], highlight[3], highlight[4], highlight[5])
             end
         end
 
         util.set_lines(state.bufnr, line, -1, true, {})
+        folds.restore(state.winnr, state.line_to_variable_path, closed, state.line_to_scope_name)
     end
 end
 

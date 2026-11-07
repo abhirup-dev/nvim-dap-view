@@ -1,0 +1,90 @@
+lua/dap-view/autocmds.lua:67: vim.schedule(refresh_auto_width)
+lua/dap-view/autocmds.lua:73: vim.schedule(function()
+lua/dap-view/breakpoints/util/treesitter.lua:35: local trees = parser:parse(true)
+lua/dap-view/console/scroll.lua:67: vim.schedule(function()
+lua/dap-view/decoders/init.lua:13: vim.schedule(function()
+lua/dap-view/decoders/init.lua:293: vim.schedule(function()
+lua/dap-view/decoders/init.lua:302: err, result = ctx.session:request(method, args)
+lua/dap-view/decoders/init.lua:419: vim.system(cmd.argv, {
+lua/dap-view/decoders/init.lua:441: vim.schedule(function()
+lua/dap-view/decoders/init.lua:529: local err, response = session:request("variables", { variablesReference = node.raw.variablesReference })
+lua/dap-view/decoders/init.lua:584: local err, response = session:request(
+lua/dap-view/host/mux/herdr.lua:108: vim.wait(PROMPT_TIMEOUT_MS, function()
+lua/dap-view/host/mux/init.lua:72: return vim.system(cmd, { text = true }):wait()
+lua/dap-view/host/remote.lua:150: local listening = vim.wait(math.max(0, deadline - vim.uv.now()), function()
+lua/dap-view/host/remote.lua:164: vim.wait(math.max(0, deadline - vim.uv.now()), function()
+lua/dap-view/host/remote.lua:248: -- Startup must not use synchronous RPC: a stalled peer would block vim.wait's
+lua/dap-view/host/remote.lua:281: local completed = vim.wait(math.max(0, deadline - vim.uv.now()), function()
+lua/dap-view/host/remote.lua:305: vim.wait(math.min(50, math.max(0, deadline - vim.uv.now())))
+lua/dap-view/host/remote.lua:417: debounce:start(DEBOUNCE_MS, 0, vim.schedule_wrap(flush))
+lua/dap-view/host/remote.lua:466: vim.schedule(function()
+lua/dap-view/host/remote.lua:523: vim.schedule_wrap(function()
+lua/dap-view/host/remote.lua:709: vim.schedule(function()
+lua/dap-view/host/remote.lua:740: vim.schedule(function()
+lua/dap-view/host/remote.lua:795: dap.listeners.after[listener][SUBSCRIPTION_ID] = function()
+lua/dap-view/host/tab.lua:27: ---Upstream already owns the "dap-view" subscription id (see `listeners.lua`);
+lua/dap-view/host/tab.lua:528: dap.listeners.before.event_stopped[SUBSCRIPTION_ID] = function()
+lua/dap-view/host/tab.lua:544: dap.listeners.after.scopes[SUBSCRIPTION_ID] = function(session)
+lua/dap-view/host/tab.lua:602: dap.listeners.after[listener][SIZE_SUBSCRIPTION_ID] = function()
+lua/dap-view/host/tab.lua:610: dap.listeners.after[listener][SUBSCRIPTION_ID] = function()
+lua/dap-view/host/viewer.lua:131: vim.schedule(report_size)
+lua/dap-view/hover/eval.lua:21: session:request("evaluate", { expression = expression, context = context, frameId = frame_id })
+lua/dap-view/listeners.lua:18: dap.listeners.on_session[SUBSCRIPTION_ID] = function(_, new)
+lua/dap-view/listeners.lua:65: vim.schedule(refresher.refresh_session_based_views)
+lua/dap-view/listeners.lua:69: dap.listeners.after.configurationDone[SUBSCRIPTION_ID] = function()
+lua/dap-view/listeners.lua:108: dap.listeners.after.setBreakpoints[SUBSCRIPTION_ID] = function()
+lua/dap-view/listeners.lua:114: dap.listeners.after.scopes[SUBSCRIPTION_ID] = function(session)
+lua/dap-view/listeners.lua:140: dap.listeners.after[listener][SUBSCRIPTION_ID] = function()
+lua/dap-view/listeners.lua:155: dap.listeners.after.variables[SUBSCRIPTION_ID] = function()
+lua/dap-view/listeners.lua:159: dap.listeners.before.event_stopped[SUBSCRIPTION_ID] = function(session)
+lua/dap-view/listeners.lua:163: dap.listeners.after.threads[SUBSCRIPTION_ID] = function(_, err)
+lua/dap-view/listeners.lua:173: dap.listeners.after.stackTrace[SUBSCRIPTION_ID] = function(_, err, _, payload)
+lua/dap-view/listeners.lua:186: dap.listeners.after[listener][SUBSCRIPTION_ID] = refresher.refresh_all_expressions
+lua/dap-view/listeners.lua:189: dap.listeners.after.initialize[SUBSCRIPTION_ID] = function(session)
+lua/dap-view/listeners.lua:204: dap.listeners.after.event_terminated[SUBSCRIPTION_ID] = function(session)
+lua/dap-view/listeners.lua:217: dap.listeners.after.disconnect[SUBSCRIPTION_ID] = function(session)
+lua/dap-view/listeners.lua:232: dap.listeners.after[listener][SUBSCRIPTION_ID] = winbar.redraw_controls
+lua/dap-view/listeners.lua:238: dap.listeners.before[listener][SUBSCRIPTION_ID] = function()
+lua/dap-view/listeners.lua:250: dap.listeners.before[listener][SUBSCRIPTION_ID] = function()
+lua/dap-view/listeners.lua:278: dap.listeners.before[event]["dap-view-decoders"] = function()
+lua/dap-view/tree/reroot.lua:92: dap.listeners.after[listener][SUBSCRIPTION_ID] = function()
+lua/dap-view/views/set.lua:12: vim.schedule(function()
+lua/dap-view/views/set.lua:23: local err, response = session:request("scopes", { frameId = frame.id })
+lua/dap-view/views/set.lua:53: session:request("setVariable", { name = name, value = value, variablesReference = variables_reference })
+lua/dap-view/views/set.lua:78: session:request("setExpression", { expression = expr, value = value, frameId = frame_id })
+lua/dap-view/vim-sessions.lua:168: vim.schedule(function()
+lua/dap-view/virtual-text.lua:96: parser:parse(false, function(_, trees)
+lua/dap-view/watches/eval.lua:15: session:request("evaluate", { expression = expression, context = "watch", frameId = frame_id })
+lua/dap-view/watches/eval.lua:96: session:request("evaluate", { expression = expr, context = "clipboard", frameId = frame_id })
+nvim-dap-mcp/cmd/nvim-dap-mcp/main.go:77: startup, cancel := context.WithTimeout(ctx, 10*time.Second)
+nvim-dap-mcp/cmd/nvim-dap-mcp/main.go:100: go func() {
+nvim-dap-mcp/cmd/nvim-dap-mcp/main.go:123: shutdown, cancelShutdown := context.WithTimeout(context.Background(), shutdownGrace)
+nvim-dap-mcp/internal/mcpserver/server.go:96: refresh, cancel := context.WithTimeout(ctx, syncTimeout)
+nvim-dap-mcp/internal/nvimbridge/bridge.go:122: go func() {
+nvim-dap-mcp/internal/nvimbridge/bridge.go:255: ctx, cancel := context.WithTimeout(ctx, callTimeout(name, argsJSON))
+nvim-dap-mcp/internal/nvimbridge/bridge.go:312: go func() {
+nvim-dap-mcp/lua/dap-mcp/sidecar.lua:119: local handle = vim.system(cmd, {
+nvim-dap-mcp/lua/dap-mcp/sidecar.lua:130: vim.schedule(function()
+nvim-dap-mcp/lua/dap-mcp/sidecar.lua:158: vim.wait(5000, function()
+nvim-dap-mcp/lua/dap-mcp/sidecar.lua:233: dap.listeners.after.event_initialized[LISTENER_KEY] = nil
+nvim-dap-mcp/lua/dap-mcp/sidecar.lua:236: dap.listeners.after.event_initialized[LISTENER_KEY] = function()
+nvim-dap-mcp/lua/dap-mcp/status.lua:32: dap.listeners.after.event_stopped["dap-mcp.status"] = function(_, body)
+nvim-dap-mcp/lua/dap-mcp/status.lua:44: dap.listeners.after.event_terminated["dap-mcp.status"] = ended
+nvim-dap-mcp/lua/dap-mcp/status.lua:45: dap.listeners.after.event_exited["dap-mcp.status"] = ended
+nvim-dap-mcp/lua/dap-mcp/status.lua:47: dap.listeners.after.event_initialized["dap-mcp.status"] = function()
+nvim-dap-mcp/lua/dap-mcp/tools/control.lua:70: dap.listeners.before.event_stopped["dap-mcp.run_to_line"] = nil
+nvim-dap-mcp/lua/dap-mcp/tools/control.lua:71: dap.listeners.before.event_terminated["dap-mcp.run_to_line"] = nil
+nvim-dap-mcp/lua/dap-mcp/tools/control.lua:86: dap.listeners.before.event_stopped["dap-mcp.run_to_line"] = restore
+nvim-dap-mcp/lua/dap-mcp/tools/control.lua:87: dap.listeners.before.event_terminated["dap-mcp.run_to_line"] = restore
+nvim-dap-mcp/lua/dap-mcp/tools/session.lua:138: vim.schedule(function()
+nvim-dap-mcp/lua/dap-mcp/tools/variables.lua:167: session:evaluate({
+nvim-dap-mcp/lua/dap-mcp/tools/variables.lua:176: vim.schedule(function()
+nvim-dap-mcp/lua/dap-mcp/tools/wait.lua:58: dap.listeners.after.event_stopped[key] = nil
+nvim-dap-mcp/lua/dap-mcp/tools/wait.lua:59: dap.listeners.after.event_terminated[key] = nil
+nvim-dap-mcp/lua/dap-mcp/tools/wait.lua:60: dap.listeners.after.event_exited[key] = nil
+nvim-dap-mcp/lua/dap-mcp/tools/wait.lua:70: vim.schedule(function()
+nvim-dap-mcp/lua/dap-mcp/tools/wait.lua:75: dap.listeners.after.event_stopped[key] = function()
+nvim-dap-mcp/lua/dap-mcp/tools/wait.lua:78: dap.listeners.after.event_terminated[key] = function()
+nvim-dap-mcp/lua/dap-mcp/tools/wait.lua:81: dap.listeners.after.event_exited[key] = function()
+nvim-dap-mcp/lua/dap-mcp/tools/wait.lua:86: timer:start(timeout, 0, function()
+nvim-dap-mcp/lua/dap-mcp/util.lua:132: local err, response = session:request(command, arguments)

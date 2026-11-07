@@ -16,7 +16,7 @@ command("DapViewHover", function(opts)
         expr = table.concat(opts.fargs, " ")
     end
     require("dap-view").hover(expr, opts.bang)
-end, { bang = true, nargs = "*" })
+end, { bang = true, nargs = "*", range = true })
 command("DapViewToggle", function(opts)
     require("dap-view").toggle(opts.bang)
 end, { bang = true })
@@ -59,6 +59,46 @@ end, {
         return require("dap-view.complete").complete_sections(arg_lead)
     end,
 })
+command("DapViewHost", function(opts)
+    local ok, err = pcall(require("dap-view.host").switch, opts.fargs[1])
+    if not ok then
+        -- Strip the "file:line: " prefix, this is a user facing message
+        vim.notify((tostring(err):gsub("^.-:%d+: ", "")), vim.log.levels.ERROR)
+    end
+end, {
+    nargs = 1,
+    ---@param arg_lead string
+    complete = function(arg_lead)
+        return require("dap-view.complete").complete_hosts(arg_lead)
+    end,
+})
+---Host switches are user driven and can fail for environmental reasons (no
+---multiplexer, no socket), so report instead of throwing
+---@param fn fun()
+local protected = function(fn)
+    return function()
+        local ok, err = pcall(fn)
+        if not ok then
+            -- Strip the "file:line: " prefix, this is a user facing message
+            vim.notify((tostring(err):gsub("^.-:%d+: ", "")), vim.log.levels.ERROR)
+        end
+    end
+end
+
+command(
+    "DapViewUndock",
+    protected(function()
+        require("dap-view").undock()
+    end),
+    {}
+)
+command(
+    "DapViewDock",
+    protected(function()
+        require("dap-view").dock()
+    end),
+    {}
+)
 command("DapViewNavigate", function(opts)
     require("dap-view").navigate({ wrap = opts.bang, count = tonumber(opts.fargs[1]) or 1 })
 end, {
@@ -71,3 +111,13 @@ api.nvim_create_autocmd("SessionLoadPost", {
         require("dap-view.vim-sessions").load_session_hook()
     end,
 })
+
+command("DapViewProfile", function(opts)
+    local ok, err = pcall(function()
+        assert(#opts.fargs == 2 and opts.fargs[1] == "use", "Usage: DapViewProfile use <name|off>")
+        require("dap-view.decoders").use(opts.fargs[2])
+    end)
+    if not ok then
+        vim.notify(tostring(err), vim.log.levels.ERROR)
+    end
+end, { nargs = "+" })

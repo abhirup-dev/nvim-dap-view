@@ -9,6 +9,65 @@ local winbar = require("dap-view.options.winbar")
 
 local api = vim.api
 
+local M = {}
+
+---The text width `tree.max_value_width = "auto"` was last measured against.
+---Reset whenever the view goes away, so a reopen measures the new window
+---@type integer?
+local rendered_width
+
+---Re-render the current section when the dap-view window's usable width changes.
+---
+---With `"auto"`, every clamped value in the buffer was measured against one
+---particular text width. That width moves when the user drags the split, and
+---also the moment a window that was never drawn gets drawn, since only then does
+---`getwininfo` report its real decorations. Neither is a render trigger by
+---itself, so the buffer would otherwise keep lines clamped to the wrong number
+local refresh_auto_width = function()
+    if not util.is_win_valid(state.winnr) or not util.is_buf_valid(state.bufnr) then
+        rendered_width = nil
+        return
+    end
+
+    if setup.config.tree.max_value_width ~= "auto" then
+        return
+    end
+
+    local width = require("dap-view.util.truncate").text_width(state.winnr)
+
+    if not width or width == rendered_width then
+        return
+    end
+
+    rendered_width = width
+
+    -- Only the tree views clamp values to the width; repl/console are terminal
+    -- buffers with no `<section>.view` module, and the rest do not truncate
+    if state.current_section == "scopes" or state.current_section == "watches" then
+        -- Reuse the normal render path, leaving the cursor where the user put it.
+        -- The scopes view fetches variables synchronously (`session:request` yields), so it
+        -- must run inside a coroutine, as upstream does in `refresher.lua`; on the main
+        -- thread the request returns nothing and the empty state overwrites the tree
+        coroutine.wrap(function()
+            require("dap-view.views").switch_to_view(state.current_section, true)
+        end)()
+    end
+end
+
+api.nvim_create_autocmd({ "WinResized", "BufWinEnter" }, {
+    callback = function(args)
+        -- `v:event.windows` is the cheap filter, not the real one: the width
+        -- comparison below is what decides. Absent or empty, just fall through
+        local windows = args.event == "WinResized" and vim.v.event.windows or nil
+
+        if windows and next(windows) and not vim.tbl_contains(windows, state.winnr) then
+            return
+        end
+
+        vim.schedule(refresh_auto_width)
+    end,
+})
+
 api.nvim_create_autocmd({ "WinClosed", "WinNew" }, {
     callback = function()
         vim.schedule(function()
@@ -26,12 +85,25 @@ api.nvim_create_autocmd({ "WinClosed", "WinNew" }, {
                     api.nvim_win_set_width(state.winnr, state.og_width)
                 end
             end
+
+            refresh_auto_width()
         end)
     end,
 })
 
 api.nvim_create_autocmd("TabEnter", {
     callback = function()
+        -- Everything below retracks the dap-view window from the *current*
+        -- tabpage's contents, and nils `state.winnr` when it isn't there. That
+        -- is right for a split the user carries around with them, and wrong for
+        -- a host that parks its window elsewhere: under the tab host, simply
+        -- visiting another tabpage would drop `state.winnr` and with it
+        -- `jump_to_view`, `show_view`, `navigate`, `add_expr`'s view switch and
+        -- every listener that refreshes a section on `stopped`
+        if not require("dap-view.host").get().follows_tabs then
+            return
+        end
+
         local session = dap.session()
         local adapter = session and session.config.type
 
@@ -100,6 +172,18 @@ api.nvim_create_autocmd("CursorMoved", {
         -- The window may be invalid when switching tabs, given that now we defer the update when switching tabs
         if util.is_win_valid(state.winnr) then
             state.cur_pos[state.current_section] = api.nvim_win_get_cursor(state.winnr)
+
+            if state.current_section == "scopes" then
+                require("dap-view.tree.reroot").hint(state.cur_pos[state.current_section][1])
+            end
         end
     end,
 })
+
+---Floats emit no `WinResized` (probed on 0.12.4: neither hidden nor visible ones
+---do), so the remote host, whose dap-view window *is* a float, has to drive the
+---re-render itself after resizing its placeholder. Exported rather than
+---duplicated so `rendered_width` stays a single piece of bookkeeping
+M.refresh_auto_width = refresh_auto_width
+
+return M

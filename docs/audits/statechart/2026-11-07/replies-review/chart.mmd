@@ -1,0 +1,86 @@
+---
+title: "Yielding replies"
+---
+stateDiagram-v2
+  state "Legend" as legend {
+    lg0: Breaks CurrentContext or RemovedWatchStaysRemoved or RequestedHover
+    lg1: Path to the CurrentContext or RemovedWatchStaysRemoved or RequestedHover bug
+  }
+  class lg0 breaks
+  class lg1 bugPath
+  state "edit" as s0 {
+    s1: idle
+    s2: pending
+    s3: done / published
+    s4: pending / changed context
+    s5: done / changed context / published
+  }
+  state "hover" as s6 {
+    s7: idle
+    s8: pending
+    s9: done / published
+    s10: pending / request replaced
+    s11: pending / changed context
+    s12: done / request replaced / published
+    s13: done / changed context
+  }
+  state "scopes" as s14 {
+    s15: idle
+    s16: pending
+    s17: done / published
+    s18: pending / request replaced
+    s19: pending / changed context
+    s20: done / request replaced
+    s21: done / changed context
+  }
+  state "watch" as s22 {
+    s23: idle
+    s24: pending
+    s25: done / published
+    s26: pending / watch removed
+    s27: pending / changed context
+    s28: done / watch removed / published
+    s29: done / changed context
+  }
+  [*] --> s1
+  [*] --> s7
+  [*] --> s15
+  [*] --> s23
+  s1 --> s2: you request a value
+  s7 --> s8: you request a value
+  s15 --> s16: you request a value
+  s23 --> s24: you request a value
+  s2 --> s3: the adapter replies
+  s2 --> s4: session, frame or decoder profile changes
+  s8 --> s9: the adapter replies
+  s8 --> s10: you replace the requested view or expression
+  s8 --> s11: session, frame or decoder profile changes
+  s16 --> s17: the adapter replies
+  s16 --> s18: you replace the requested view or expression
+  s16 --> s19: session, frame or decoder profile changes
+  s24 --> s25: the adapter replies
+  s24 --> s26: you remove the watch
+  s24 --> s27: session, frame or decoder profile changes
+  s26 --> s28: the adapter replies
+  s10 --> s12: the adapter replies
+  s18 --> s20: the adapter replies
+  s4 --> s5: the adapter replies
+  s11 --> s13: the adapter replies
+  s19 --> s21: the adapter replies
+  s27 --> s29: the adapter replies
+  classDef breaks fill:#ffecee,stroke:#e72e3b,stroke-width:2.5px,color:#cd2834
+  class s1 bugPath
+  class s2 bugPath
+  class s4 bugPath
+  class s5 breaks
+  class s5 bugPath
+  class s7 bugPath
+  class s8 bugPath
+  class s10 bugPath
+  class s12 breaks
+  class s12 bugPath
+  class s23 bugPath
+  class s24 bugPath
+  class s26 bugPath
+  class s28 breaks
+  class s28 bugPath

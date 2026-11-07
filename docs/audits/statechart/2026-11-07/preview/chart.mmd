@@ -1,0 +1,22 @@
+---
+title: "Preview mutation boundary"
+---
+stateDiagram-v2
+  state "Legend" as legend {
+    lg0: Breaks PreviewNeverAdapterRef or PreviewReadOnly
+    lg1: Path to the PreviewNeverAdapterRef or PreviewReadOnly bug
+  }
+  class lg0 breaks
+  class lg1 bugPath
+  s0: mcp / shown
+  s1: ui / shown
+  s2: mcp / preview sent to adapter
+  s3: ui / done
+  [*] --> s0
+  [*] --> s1
+  s0 --> s2: you try to edit a preview
+  s1 --> s3: you try to edit a preview
+  classDef breaks fill:#ffecee,stroke:#e72e3b,stroke-width:2.5px,color:#cd2834
+  class s0 bugPath
+  class s2 breaks
+  class s2 bugPath

@@ -67,9 +67,37 @@ M.register_view = function(id, section)
     actions.register_view(id, section)
 end
 
+---Re-root the scopes tree at the variable under the cursor
+---@param line? integer
+M.reroot = function(line)
+    require("dap-view.tree.reroot").reroot(line)
+end
+
+---Pop one level off the scopes tree breadcrumb
+M.root_up = function()
+    require("dap-view.tree.reroot").root_up()
+end
+
 ---@param opts dapview.NavigateOpts
 M.navigate = function(opts)
     actions.navigate(opts)
+end
+
+---@param name dapview.HostName
+M.switch_host = function(name)
+    require("dap-view.host").switch(name)
+end
+
+---Move the view into a multiplexer pane
+M.undock = function()
+    M.switch_host("remote")
+end
+
+---Bring the view back into the host it was undocked from
+M.dock = function()
+    local host = require("dap-view.host")
+
+    host.switch(host.previous())
 end
 
 return M

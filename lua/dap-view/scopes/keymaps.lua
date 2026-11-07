@@ -20,15 +20,17 @@ return {
         end,
         desc = "jump to parent",
     },
-    set_value = {
+    show_value = {
         action = function()
             trigger.at_cursor(function(line)
-                if require("dap-view.scopes.actions").set_value(line) then
-                    coroutine.wrap(function()
-                        require("dap-view.views").switch_to_view("scopes")
-                    end)()
-                end
+                require("dap-view.tree.value").show(line)
             end)
+        end,
+        desc = "show full value",
+    },
+    set_value = {
+        action = function()
+            trigger.at_cursor(require("dap-view.scopes.actions").set_value)
         end,
         desc = "set value",
     },

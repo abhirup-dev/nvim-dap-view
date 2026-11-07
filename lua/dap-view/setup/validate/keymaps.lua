@@ -22,6 +22,7 @@ function M.validate(config)
         set_value = { scopes.set_value, { "table", "string" } },
         jump_to_parent = { scopes.jump_to_parent, { "table", "string" } },
         toggle = { scopes.toggle, { "table", "string" } },
+        show_value = { scopes.show_value, { "table", "string" } },
     }, scopes)
 
     local watches = config.watches
@@ -29,6 +30,7 @@ function M.validate(config)
         jump_to_parent = { watches.jump_to_parent, { "table", "string" } },
         toggle = { watches.toggle, { "table", "string" } },
         set_value = { watches.set_value, { "table", "string" } },
+        show_value = { watches.show_value, { "table", "string" } },
         copy_value = { watches.copy_value, { "table", "string" } },
         delete_expression = { watches.delete_expression, { "table", "string" } },
         append_expression = { watches.append_expression, { "table", "string" } },

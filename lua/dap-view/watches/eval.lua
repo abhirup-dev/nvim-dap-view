@@ -1,19 +1,47 @@
 local state = require("dap-view.state")
 
 local M = {}
+local registrations = {}
+
+-- Invalidate all pending evaluations for a removed registration.
+M.invalidate_registration = function(expression)
+    registrations[expression] = (registrations[expression] or 0) + 1
+end
 
 ---@param expression string
 ---@param default_expanded boolean
 ---@param id? integer
 M.evaluate_expression = function(expression, default_expanded, id)
+    local registration = registrations[expression] or 0
     local session = assert(require("dap").session(), "has active session")
 
     local frame_id = session.current_frame and session.current_frame.id
+    local stamp = require("dap-view.decoders").context(session, expression)
 
     local err, response =
         session:request("evaluate", { expression = expression, context = "watch", frameId = frame_id })
 
+    if registration ~= (registrations[expression] or 0) or not require("dap-view.decoders").is_current(stamp) then
+        return
+    end
+    if response then
+        local variable = require("dap-view.decoders").prepare({
+            name = expression,
+            value = response.result,
+            type = response.type,
+            evaluateName = expression,
+            variablesReference = response.variablesReference or 0,
+            memoryReference = response.memoryReference,
+        }, expression, session)
+        response = vim.tbl_extend(
+            "force",
+            response,
+            { result = variable.value, variablesReference = variable.variablesReference }
+        )
+    end
+
     local previous_expression_view = state.watched_expressions[expression]
+        and vim.deepcopy(state.watched_expressions[expression])
 
     local previous_result = previous_expression_view
         and previous_expression_view.response
@@ -50,14 +78,17 @@ M.evaluate_expression = function(expression, default_expanded, id)
     if new_expression_view.expanded then
         local variables_reference = response and response.variablesReference
 
-        if variables_reference and variables_reference > 0 then
-            new_expression_view.children = M.expand_variable(variables_reference, new_expression_view.children)
+        if variables_reference and variables_reference ~= 0 then
+            new_expression_view.children =
+                M.expand_variable(variables_reference, new_expression_view.children, expression)
         else
             new_expression_view.children = nil
         end
     end
 
-    state.watched_expressions[expression] = new_expression_view
+    if registration == (registrations[expression] or 0) and require("dap-view.decoders").is_current(stamp) then
+        state.watched_expressions[expression] = new_expression_view
+    end
 end
 
 ---@param expr string
@@ -85,14 +116,16 @@ end
 
 ---@param variables_reference number
 ---@param previous_expansion_result dapview.VariableView[]?
-M.expand_variable = function(variables_reference, previous_expansion_result)
+M.expand_variable = function(variables_reference, previous_expansion_result, path)
     local session = assert(require("dap").session(), "has active session")
 
     local frame_id = session.current_frame and session.current_frame.id
 
-    local err, response = session:request(
-        "variables",
-        { variablesReference = variables_reference, context = "watch", frameId = frame_id }
+    path = path or tostring(variables_reference)
+    local err, response = require("dap-view.decoders").resolve_children(
+        variables_reference,
+        path,
+        { session = session, variables_args = { context = "watch", frameId = frame_id } }
     )
 
     local response_variables = response and response.variables
@@ -105,10 +138,13 @@ M.expand_variable = function(variables_reference, previous_expansion_result)
         local previous_variable_view = vim.iter(previous_expansion_result or {}):find(
             ---@param v dapview.VariableView
             function(v)
+                if v.variable.name == variable.name then
+                    return true
+                end
                 if v.variable.evaluateName then
                     return v.variable.evaluateName == variable.evaluateName
                 end
-                if v.variable.variablesReference > 0 then
+                if v.variable.variablesReference ~= 0 then
                     return v.variable.variablesReference == variable.variablesReference
                 end
             end
@@ -133,17 +169,19 @@ M.expand_variable = function(variables_reference, previous_expansion_result)
             expanded = false,
             children = nil,
             reference = variable.variablesReference,
+            path = path .. "." .. variable.name,
         }
 
         ---@type dapview.VariableView
         local new_variable_view = previous_variable_view or default_variable_view
 
+        new_variable_view.reference = variable.variablesReference
         local variables_reference_ = variable.variablesReference
 
         if new_variable_view.expanded then
-            if variables_reference_ > 0 then
+            if variables_reference_ ~= 0 then
                 new_variable_view.children, new_variable_view.err =
-                    M.expand_variable(variables_reference_, new_variable_view.children)
+                    M.expand_variable(variables_reference_, new_variable_view.children, path .. "." .. variable.name)
             else
                 -- We have to reset the children if the variable is no longer valid, otherwise it retains the old value indefinitely
                 new_variable_view.children = nil

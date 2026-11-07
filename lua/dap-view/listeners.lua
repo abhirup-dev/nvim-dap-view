@@ -10,9 +10,13 @@ local scroll = require("dap-view.console.scroll")
 local fmt = require("dap-view.util.fmt")
 local vt = require("dap-view.virtual-text")
 
+-- Registers its own session-end listeners under a distinct subscription id
+require("dap-view.tree.reroot")
+
 local SUBSCRIPTION_ID = "dap-view"
 
 dap.listeners.on_session[SUBSCRIPTION_ID] = function(_, new)
+    require("dap-view.decoders").invalidate()
     if new then
         local config = setup.config
         local term_config = config.windows.terminal
@@ -179,7 +183,16 @@ end
 local reeval = { "setExpression", "setVariable" }
 
 for _, listener in ipairs(reeval) do
-    dap.listeners.after[listener][SUBSCRIPTION_ID] = refresher.refresh_all_expressions
+    dap.listeners.after[listener][SUBSCRIPTION_ID] = function(session, err, _, request)
+        if err then
+            return
+        end
+        local frame = session.current_frame
+        if request and request.frameId and (not frame or request.frameId ~= frame.id) then
+            return
+        end
+        refresher.refresh_variables(session, frame)
+    end
 end
 
 dap.listeners.after.initialize[SUBSCRIPTION_ID] = function(session)
@@ -253,5 +266,25 @@ for _, listener in ipairs(auto_close) do
                 require("dap-view.actions").close(not (auto_toggle == "keep_terminal"))
             end
         end
+    end
+end
+
+-- Invalidate before existing refresh listeners run. A generation also fences async completions.
+for _, event in ipairs({
+    "event_continued",
+    "continue",
+    "next",
+    "stepIn",
+    "stepOut",
+    "event_stopped",
+    "scopes",
+    "event_terminated",
+    "disconnect",
+    "setVariable",
+    "setExpression",
+    "restart",
+}) do
+    dap.listeners.before[event]["dap-view-decoders"] = function()
+        require("dap-view.decoders").invalidate()
     end
 end

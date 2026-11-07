@@ -1,0 +1,12 @@
+  ok   pending render leaves published indices intact
+  ok   overlapping renders preserve reroot
+  ok   isolated breadcrumb
+  ok   published indices match subtree
+  ok   width refresh preserves root
+  ok   root change publishes current tree
+  ok   stale missing target cannot pop current stack
+  ok   old frame cannot pop root
+  ok   old frame cannot publish
+  ok   old session cannot pop root
+
+10 passed, 0 failed

@@ -1,0 +1,12 @@
+{
+  "name": "rpc-protobuf",
+  "decoders": [
+    {
+      "name": "Person",
+      "kind": "command",
+      "match": { "type": "main.Envelope" },
+      "command": "person",
+      "source": { "kind": "go_bytes", "field": "Payload" }
+    }
+  ]
+}

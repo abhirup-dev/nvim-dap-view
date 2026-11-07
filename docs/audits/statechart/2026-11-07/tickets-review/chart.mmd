@@ -1,0 +1,40 @@
+---
+title: "MCP ticket and sidecar fences"
+---
+stateDiagram-v2
+  direction LR
+  state "At the same time" as all {
+    state "Ticket" as r0 {
+      s0: pending
+      s1: done
+      s2: absent
+      [*] --> s0
+      s0 --> s1: event or timeout settles the wait
+      s1 --> s2: caller collects its reply [when Caller is waiting]
+      s0 --> s2: next call collects idle tickets
+      s1 --> s2: next call collects idle tickets
+    }
+    --
+    state "Caller" as r1 {
+      s3: waiting
+      s4: canceled
+      s5: delivered
+      [*] --> s3
+      s3 --> s4: caller cancels its wait
+      s3 --> s5: caller collects its reply [when Ticket is done and Wait is settled]
+    }
+    --
+    state "Wait" as r2 {
+      s6: listening
+      s7: settled
+      [*] --> s6
+      s6 --> s7: event or timeout settles the wait
+    }
+    --
+    state "Sidecar" as r3 {
+      s8: original
+      s9: replacement
+      [*] --> s8
+      s8 --> s9: you restart the sidecar
+    }
+  }

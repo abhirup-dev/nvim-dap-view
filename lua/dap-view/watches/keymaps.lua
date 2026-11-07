@@ -67,6 +67,14 @@ return {
         end,
         desc = "copy value",
     },
+    show_value = {
+        action = function()
+            trigger.at_cursor(function(line)
+                require("dap-view.tree.value").show(line)
+            end)
+        end,
+        desc = "show full value",
+    },
     set_value = {
         action = function()
             trigger.at_cursor(require("dap-view.watches.actions").set_value)

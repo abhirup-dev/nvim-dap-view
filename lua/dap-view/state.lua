@@ -7,6 +7,7 @@
 ---@field err? dap.ErrorResponse
 ---@field updated boolean
 ---@field reference number
+---@field path? string
 ---@field expanded boolean
 ---@field children? dapview.VariableView[]
 
@@ -38,6 +39,10 @@
 ---@field current_section? dapview.Section
 ---@field og_height? integer
 ---@field og_width? integer
+---@field host_tab_size? dapview.HostTabSize
+---@field relocated_term? dapview.RelocatedTerm The terminal window the tab host
+---moved into the user's own tabpage on a bang-less close, and the layout to hand
+---back once it goes away again
 ---@field last_section? dapview.Section
 ---@field last_session_buf? integer
 ---@field exceptions_options table<string,dapview.ExceptionsOption[]>
@@ -66,9 +71,12 @@
 ---@field variable_path_to_value table<string,string>
 ---@field variable_path_is_expanded table<string,boolean>
 ---@field variable_path_to_parent_reference table<string,integer>
+---@field variable_path_to_reference table<string,integer>
+---@field variable_path_to_depth table<string,integer>
 ---@field variable_path_to_parent_line table<string,integer>
 ---@field variable_path_to_set_variables table<string, boolean>
 ---@field line_to_variable_path table<integer,string>
+---@field tree_root_stack string[] Variable paths the scopes tree is re-rooted at, innermost last
 ---@field watched_expressions table<string, dapview.ExpressionView>
 ---@field hovered_expression dapview.HoverView?
 ---@field hover string?
@@ -105,10 +113,13 @@ local M = {
     variable_path_to_evaluate_name = {},
     variable_path_to_value = {},
     variable_path_to_parent_reference = {},
+    variable_path_to_reference = {},
+    variable_path_to_depth = {},
     variable_path_to_parent_line = {},
     variable_path_to_name = {},
     variable_path_to_set_variables = {},
     line_to_variable_path = {},
+    tree_root_stack = {},
     cur_pos = {},
 }
 
