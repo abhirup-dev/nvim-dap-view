@@ -4,6 +4,9 @@ H.setup({ host = { default = os.getenv("HOST") or "tab" }, winbar = { default_se
 local fake = H.new_fake_session({ term_buf = H.make_term_buf() })
 fake.current_frame.scopes = { { name = "Locals", variablesReference = 100 } }
 local base = fake.request
+local top_name = "a"
+local other_children =
+    { { name = "kept", value = "1", variablesReference = 0 }, { name = "also", value = "2", variablesReference = 0 } }
 fake.request = function(self, cmd, args, cb)
     if cmd ~= "variables" then
         return base(self, cmd, args, cb)
@@ -12,14 +15,11 @@ fake.request = function(self, cmd, args, cb)
     local vars
     if ref == 100 then
         vars = {
-            { name = "a", value = "{}", variablesReference = 101 },
+            { name = top_name, value = "{}", variablesReference = 101 },
             { name = "other", value = "{}", variablesReference = 104 },
         }
     elseif ref == 104 then
-        vars = {
-            { name = "kept", value = "1", variablesReference = 0 },
-            { name = "also", value = "2", variablesReference = 0 },
-        }
+        vars = other_children
     else
         vars = {
             {
@@ -73,6 +73,18 @@ H.ok(vim.fn.foldclosed(line("Locals.other.kept")) > 0, "unrelated manual fold su
 render()
 H.ok(vim.fn.foldclosed(line("Locals.other.kept")) > 0, "manual fold survives refresh")
 H.eq(vim.fn.foldclosed(line("Locals.a.nested.nested.leaf")), -1, "expanded descendants survive refresh")
+
+other_children =
+    { { name = "also", value = "2", variablesReference = 0 }, { name = "third", value = "3", variablesReference = 0 } }
+render()
+H.ok(vim.fn.foldclosed(line("Locals.other.also")) > 0, "parent fold survives first-child replacement")
+vim.api.nvim_win_set_cursor(state.winnr, { line("Locals.a"), 0 })
+vim.cmd("normal! zc")
+H.ok(vim.fn.foldclosed(line("Locals.a")) > 0, "scope fold established")
+top_name = "changed"
+render()
+H.ok(vim.fn.foldclosed(line("Locals.changed")) > 0, "scope fold survives first-variable replacement")
+vim.cmd("normal! zR")
 
 H.group("watch decoder-shaped synthetic descendants")
 local function node(name, path, reference, children)

@@ -348,7 +348,7 @@ M.show = function()
         end
 
         local folds = require("dap-view.tree.fold")
-        local closed = folds.capture(state.winnr, shared_state.line_to_variable_path)
+        local closed = folds.capture(state.winnr, shared_state.line_to_variable_path, shared_state.line_to_scope_name)
         for _, key in ipairs(index_keys) do
             shared_state[key] = state[key]
         end
@@ -361,7 +361,7 @@ M.show = function()
         end
 
         util.set_lines(state.bufnr, line, -1, true, {})
-        folds.restore(state.winnr, state.line_to_variable_path, closed)
+        folds.restore(state.winnr, state.line_to_variable_path, closed, state.line_to_scope_name)
     end
 end
 
