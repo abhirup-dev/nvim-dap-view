@@ -245,26 +245,71 @@ local highlights = function()
     return hls
 end
 
+-- Startup must not use synchronous RPC: a stalled peer would block vim.wait's
+-- deadline callback. Replies arrive as notifications while the owner stays live.
+local startup_sequence = 0
+local pending_startup
+
+M.on_startup_response = function(id, ok, result)
+    if pending_startup and pending_startup.id == id then
+        pending_startup.done, pending_startup.ok, pending_startup.result = true, ok, result
+    end
+end
+
+local startup_code = [[
+local id, method, args = ...
+local owner
+for _, info in ipairs(vim.api.nvim_list_chans()) do
+    if info.client and info.client.name == "dap-view-owner" then owner = info.id; break end
+end
+if not owner then return end
+local ok, result = pcall(function()
+    if method == "ready" then
+        return type(_G.dapview_viewer) == "table" and type(_G.dapview_viewer.attach) == "function"
+    end
+    return _G.dapview_viewer.attach(unpack(args))
+end)
+if result == nil then result = vim.NIL end
+vim.rpcnotify(owner, "nvim_exec_lua", "require('dap-view.host.remote').on_startup_response(...)", { id, ok, result })
+]]
+
+local startup_request = function(method, args, deadline)
+    startup_sequence = startup_sequence + 1
+    local response = { id = startup_sequence, done = false }
+    pending_startup = response
+    vim.rpcnotify(chan, "nvim_exec_lua", startup_code, { response.id, method, args })
+    local completed = vim.wait(math.max(0, deadline - vim.uv.now()), function()
+        return response.done
+    end, 10)
+    if pending_startup == response then
+        pending_startup = nil
+    end
+    if not completed then
+        error("The remote viewer did not become ready within the startup timeout", 0)
+    end
+    if not response.ok then
+        error(response.result, 0)
+    end
+    return response.result
+end
+
 ---@return dapview.RemoteViewer
 local attach_viewer = function(deadline)
-    local ready = vim.wait(math.max(0, deadline - vim.uv.now()), function()
-        local ok, result = pcall(
-            vim.rpcrequest,
-            chan,
-            "nvim_exec_lua",
-            "return type(_G.dapview_viewer) == 'table' and type(_G.dapview_viewer.attach) == 'function'",
-            {}
-        )
-        return ok and result == true
-    end, 50)
+    vim.rpcnotify(chan, "nvim_set_client_info", "dap-view-owner", {}, "remote", vim.empty_dict(), vim.empty_dict())
+    local ready = false
+    while vim.uv.now() < deadline do
+        ready = startup_request("ready", {}, deadline)
+        if ready then
+            break
+        end
+        vim.wait(math.min(50, math.max(0, deadline - vim.uv.now())))
+    end
     if not ready then
         error("The remote viewer did not become ready within the startup timeout", 0)
     end
     local tree = setup.config.tree
 
-    vim.rpcrequest(chan, "nvim_set_client_info", "dap-view-owner", {}, "remote", vim.empty_dict(), vim.empty_dict())
-
-    local result = vim.rpcrequest(chan, "nvim_exec_lua", "return _G.dapview_viewer.attach(...)", {
+    local result = startup_request("attach", {
         {
             keymaps = forwarded_keymaps(),
             tabstop = tree.indent_width or nil,
@@ -274,7 +319,7 @@ local attach_viewer = function(deadline)
             background = vim.o.background,
             highlights = setup.config.host.remote.mirror_highlights and highlights() or nil,
         },
-    })
+    }, deadline)
 
     return result
 end
@@ -564,6 +609,10 @@ local close_pane = function()
 end
 
 M.close = function()
+    if pending_startup then
+        pending_startup.done, pending_startup.ok, pending_startup.result = true, false, "Remote startup cancelled"
+        pending_startup = nil
+    end
     mirror.on_render = nil
 
     stop_timers()
