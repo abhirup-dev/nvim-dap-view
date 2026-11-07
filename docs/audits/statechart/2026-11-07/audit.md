@@ -1,8 +1,9 @@
 # Candidate 29aa630 correctness audit
 
-**Hold merge: seven defects reproduced, including unrelated user-tab loss.**
+Historical baseline: seven defects reproduced, including unrelated user-tab loss.
+See the [fix mapping](README.md) for the subsequent stabilization commits.
 
-HEAD `29aa630ae440f73a9ef421ce12df6bf30edd406a`. Production checkout unchanged. No child agents, commits/pushes, PR operations, user editor/pane/socket/settings changes or global tool configuration changes. Parent owns `dv-c5r.9`.
+Audited revision: `29aa630ae440f73a9ef421ce12df6bf30edd406a`.
 
 This is a whole-runtime inventory with focused executable lifecycle verification, not a proof that every line is correct. [coverage.tsv](coverage.tsv) maps all 128 runtime Lua/Go files (14,302 lines) to modeled, manual, stateless/setup, or explicitly excluded areas. [async-boundaries.txt](async-boundaries.txt) inventories yielding/deferred boundaries across that entire surface. Tests/examples/docs/Go test harness are outside runtime inventory. Classification does not claim equal manual review depth for every file.
 
@@ -10,13 +11,13 @@ This is a whole-runtime inventory with focused executable lifecycle verification
 
 | Severity | Defect and implementation | Replay evidence |
 |---|---|---|
-| P1 | **Moved debugger tab closes unrelated user tab on session restore.** `host/tab.lua:108` refreshes numeric marker only on TabNew/TabClosed/TabEnter. `tabmove 0` updates none. `vim-sessions.lua:110,141,171` trusts stale index and closes the selected restored user tab. | Real writer moves debugger from index 2 to 1 while marker stays 2, saves a session; real reader restores two tabs; scheduled cleanup invalidates unrelated user tab. [tabmove-replay.log](tabmove-replay.log). Refresh ownership marker at session-write boundary, including supported older Neovim paths. |
-| P2 | **Old JS setExpression reply mutates new session cache.** `views/set.lua:86` writes value and workaround flag before the guarded refresh. | Request → change active session/invalidate epoch → old reply stores `OLD_SESSION`. [replay.log](replay.log), CurrentContext. Guard cache mutation too. |
-| P2 | **Old hover reply replaces current expression's result.** `hover/eval.lua:23-28` checks session/frame/generation, not requested hover or request sequence. | Old evaluate yields → requested hover becomes new → reply publishes `OLD_HOVER`. Actual evaluator, controlled adapter completion. [replay.log](replay.log), RequestedHover. |
-| P2 | **Pending refresh resurrects removed watch.** `watches/eval.lua:83` republishes when context matches, regardless of watch removal. | Begin refresh → actual remove_watch_expr deletes x → adapter completion reinserts x. [replay.log](replay.log), RemovedWatchStaysRemoved. Track expression registration/version while preserving first-add behavior. |
-| P2 | **Queued remote key executes in replacement local host.** `host/remote.lua:739` schedules work without capturing remote lifetime/channel/host identity. | Real isolated PTY viewer ready → actual owner on_key queues X → dock into tab host → queued X invokes new host mapping (`hits=1`). [remote-replay.log](remote-replay.log). Notification handler entered directly after real viewer startup to make ordering deterministic. |
-| P2 | **MCP mutation forwards decoder preview reference to adapter.** `dap-mcp/tools/variables.lua:103-112` checks numeric type, not positivity; UI setter rejects negative parents. | A real decoder-generated negative ref passed through actual dispatcher/set_variable to recording fake adapter: `setVariable.variablesReference=-1`. [replay.log](replay.log), PreviewReadOnly / PreviewNeverAdapterRef. This confirms invalid forwarding, not that real adapters accept negative refs. |
-| P2 | **Child-watch full-value tooltip crashes.** `tree/value.lua:31` accesses variable_view.variable, but watches/view.lua records variable_view.view.variable. | Actual indexed watch record → value_at(2) → nil-field error. [replay.log](replay.log), WatchTooltip. Source-discovered and replayed, outside lifecycle model. |
+| P1 | **Moved debugger tab closes unrelated user tab on session restore.** `host/tab.lua:108` refreshes numeric marker only on TabNew/TabClosed/TabEnter. `tabmove 0` updates none. `vim-sessions.lua:110,141,171` trusts stale index and closes the selected restored user tab. | Real writer moves debugger from index 2 to 1 while marker stays 2, saves a session; real reader restores two tabs; scheduled cleanup invalidates unrelated user tab. [tab reorder replay](replays/tabmove-replay.lua). Refresh ownership marker at session-write boundary, including supported older Neovim paths. |
+| P2 | **Old JS setExpression reply mutates new session cache.** `views/set.lua:86` writes value and workaround flag before the guarded refresh. | Request → change active session/invalidate epoch → old reply stores `OLD_SESSION`. [code replay](replays/replay.lua), CurrentContext. Guard cache mutation too. |
+| P2 | **Old hover reply replaces current expression's result.** `hover/eval.lua:23-28` checks session/frame/generation, not requested hover or request sequence. | Old evaluate yields → requested hover becomes new → reply publishes `OLD_HOVER`. Actual evaluator, controlled adapter completion. [code replay](replays/replay.lua), RequestedHover. |
+| P2 | **Pending refresh resurrects removed watch.** `watches/eval.lua:83` republishes when context matches, regardless of watch removal. | Begin refresh → actual remove_watch_expr deletes x → adapter completion reinserts x. [code replay](replays/replay.lua), RemovedWatchStaysRemoved. Track expression registration/version while preserving first-add behavior. |
+| P2 | **Queued remote key executes in replacement local host.** `host/remote.lua:739` schedules work without capturing remote lifetime/channel/host identity. | Real isolated PTY viewer ready → actual owner on_key queues X → dock into tab host → queued X invokes new host mapping (`hits=1`). [PTY replay](replays/remote-replay.lua). Notification handler entered directly after real viewer startup to make ordering deterministic. |
+| P2 | **MCP mutation forwards decoder preview reference to adapter.** `dap-mcp/tools/variables.lua:103-112` checks numeric type, not positivity; UI setter rejects negative parents. | A real decoder-generated negative ref passed through actual dispatcher/set_variable to recording fake adapter: `setVariable.variablesReference=-1`. [code replay](replays/replay.lua), PreviewReadOnly / PreviewNeverAdapterRef. This confirms invalid forwarding, not that real adapters accept negative refs. |
+| P2 | **Child-watch full-value tooltip crashes.** `tree/value.lua:31` accesses variable_view.variable, but watches/view.lua records variable_view.view.variable. | Actual indexed watch record → value_at(2) → nil-field error. [code replay](replays/replay.lua), WatchTooltip. Source-discovered and replayed, outside lifecycle model. |
 
 Model-only counterexamples: **none in final models**. All eight failed rule traces replayed; two pairs of rules identify the same underlying defect.
 
@@ -33,7 +34,7 @@ Model-only counterexamples: **none in final models**. All eight failed rule trac
 | [Preview](preview/report.md) | 4 | 4 | PreviewReadOnly, PreviewNeverAdapterRef | none |
 | [Startup](startup/report.md) | 5 | 7 | none | ClosedReleases, ClosedNotReady, ReadyOwns |
 
-The first ownership model incorrectly updated marker during reorder and passed. The actual tabmove probe contradicted that assumption; the model was corrected. Only ownership-review is authoritative; earlier output folders are investigation history. No invariant was weakened to get a pass. A view-module error from using Array.includes on a TLA sequence object was corrected to Object.values; it did not change model semantics.
+The first ownership model incorrectly updated marker during reorder and passed. The actual tabmove probe contradicted that assumption; the model was corrected. Only ownership-review is authoritative; earlier output folders are investigation history. No invariant was weakened to get a pass.
 
 ## Rules and report-numbered paths
 
@@ -63,11 +64,11 @@ Whole-surface coverage: host/session/console ownership mapped to Ownership plus 
 ## Validation
 
 - Three persistent headless replay programs reproduce all defects. Probes assert observed defective behavior; fixing production should make these assertions fail until converted to regression expectations.
-- scopes_race: **10 passed** ([log](scopes-race.log)).
-- session_restore_tabpage: **11 passed** ([log](session-restore.log)).
-- decoder_names: **7 passed** ([log](decoder-names.log)).
-- MCP tests/run.lua: **215 passed** ([log](mcp-tests.log)).
-- sidecar_lifecycle.lua: **9 passed**, including occupied-port failure / immediate restart ([log](sidecar-tests.log)).
+- scopes_race: **10 passed**.
+- session_restore_tabpage: **11 passed**.
+- decoder_names: **7 passed**.
+- MCP tests/run.lua: **215 passed**.
+- sidecar_lifecycle.lua: **9 passed**, including occupied-port failure / immediate restart.
 - Existing 50 UI runs / real integrations supplied as prior evidence; not rerun in full here.
 
 Commands run from checkout:
@@ -83,38 +84,11 @@ nvim --headless -u NONE -l nvim-dap-mcp/tests/run.lua
 nvim --headless -u NONE -l nvim-dap-mcp/tests/sidecar_lifecycle.lua
 ```
 
-## Source, output and reproduction
+## Reproduction and retained evidence
 
-Reusable model/config/view sources and three replay programs: `docs/audits/statechart/2026-11-07/models/`. Required concise topic/root indices updated. Generated reports/logs/charts stay under `/tmp/dap-view-statechart-29aa630/`. Source-only promotion adds comments; no semantics changed. Promoted Preview rerun validated source/config/view discovery. Scratch contains no isolated report/prompt.
+The [README](README.md#reproduce-the-original-model-checks) gives portable model-checking commands. Model/config/view sources are in [models/](models/), and historical defect-asserting programs are in [replays/](replays/). Run those programs only against an isolated checkout of the audited revision; passing regressions for the fixed behavior live in the normal test suite.
 
-Reproduce each finite model with a **new** output folder; exit 1 is expected for rule failures:
-
-```sh
-skill=/path/to/pstack/skills/statechart
-models="$PWD/docs/audits/statechart/2026-11-07/models"
-for name in Ownership Replies Remote Tickets Preview Startup; do
-  "$skill/scripts/statechart" "$models/$name.tla" \
-    --config "$models/$name.cfg" --view "$models/$name.view.mjs" \
-    --out "/tmp/dap-view-statechart-rerun-$name"
-done
-```
-
-Final directories in model table each contain skill-generated report.md/chart.mmd/tlc.out and any per-rule TLC output emitted by skill. Each SVG is retained beside chart.mmd.
-
-Pele 1.9.0 installed outside checkout:
-
-```sh
-npm install --prefix /tmp/dap-view-statechart-29aa630/renderer pele@1.9.0 --no-audit --no-fund
-node /tmp/dap-view-statechart-29aa630/render.mjs \
-  /tmp/dap-view-statechart-29aa630/ownership-review \
-  /tmp/dap-view-statechart-29aa630/replies-review \
-  /tmp/dap-view-statechart-29aa630/remote-final \
-  /tmp/dap-view-statechart-29aa630/tickets-review \
-  /tmp/dap-view-statechart-29aa630/preview \
-  /tmp/dap-view-statechart-29aa630/startup
-```
-
-render() uses `{limit: 1_000_000, outputLimit: 8_000_000, maxEdges: 10_000}`. No browser/server. Skill used cached TLC/Java; no global mise/tool configuration change required.
+The model folders retain reports, Mermaid source and Pele SVGs. One-time validation transcripts and raw TLC output are omitted from the checkout; the original outputs remain in Git at commit `1ea5651`. Re-running the models produces fresh traces. The README records the renderer version and limits.
 
 ## Charts and Mermaid text
 
@@ -124,278 +98,22 @@ Charts hide only steps whose endpoints have the same label (terminal stutter, in
 
 [Skill report](ownership-review/report.md) · [Mermaid](ownership-review/chart.mmd) · [Pele SVG](ownership-review/chart.svg)
 
-![Ownership](ownership-review/chart.svg)
-
-```mermaid
----
-title: "Saved marker after moving a tab"
----
-stateDiagram-v2
-  state "Legend" as legend {
-    lg0: Breaks NeverCloseUser or RestoredIdentity
-    lg1: Path to the NeverCloseUser or RestoredIdentity bug
-  }
-  class lg0 breaks
-  class lg1 bugPath
-  s0: live / original order
-  s1: live / debugger moved first
-  s2: saved / original order
-  s3: restored / debug claimed
-  s4: saved / debugger moved first
-  s5: closed / user tab survives
-  s6: restored / user claimed
-  s7: closed / user tab lost
-  [*] --> s0
-  s0 --> s1: you move the debugger tab without switching tabs
-  s0 --> s2: you save the stale index
-  s1 --> s4: you save the stale index
-  s2 --> s3: the saved index selects its restored tab
-  s3 --> s5: the claimed tab closes
-  s4 --> s6: the saved index selects its restored tab
-  s6 --> s7: the claimed tab closes
-  classDef breaks fill:#ffecee,stroke:#e72e3b,stroke-width:2.5px,color:#cd2834
-  class s0 bugPath
-  class s1 bugPath
-  class s4 bugPath
-  class s6 breaks
-  class s6 bugPath
-  class s7 breaks
-  class s7 bugPath
-```
-
 ### Replies
 
 [Skill report](replies-review/report.md) · [Mermaid](replies-review/chart.mmd) · [Pele SVG](replies-review/chart.svg)
-
-![Replies](replies-review/chart.svg)
-
-```mermaid
----
-title: "Yielding replies"
----
-stateDiagram-v2
-  state "Legend" as legend {
-    lg0: Breaks CurrentContext or RemovedWatchStaysRemoved or RequestedHover
-    lg1: Path to the CurrentContext or RemovedWatchStaysRemoved or RequestedHover bug
-  }
-  class lg0 breaks
-  class lg1 bugPath
-  state "edit" as s0 {
-    s1: idle
-    s2: pending
-    s3: done / published
-    s4: pending / changed context
-    s5: done / changed context / published
-  }
-  state "hover" as s6 {
-    s7: idle
-    s8: pending
-    s9: done / published
-    s10: pending / request replaced
-    s11: pending / changed context
-    s12: done / request replaced / published
-    s13: done / changed context
-  }
-  state "scopes" as s14 {
-    s15: idle
-    s16: pending
-    s17: done / published
-    s18: pending / request replaced
-    s19: pending / changed context
-    s20: done / request replaced
-    s21: done / changed context
-  }
-  state "watch" as s22 {
-    s23: idle
-    s24: pending
-    s25: done / published
-    s26: pending / watch removed
-    s27: pending / changed context
-    s28: done / watch removed / published
-    s29: done / changed context
-  }
-  [*] --> s1
-  [*] --> s7
-  [*] --> s15
-  [*] --> s23
-  s1 --> s2: you request a value
-  s7 --> s8: you request a value
-  s15 --> s16: you request a value
-  s23 --> s24: you request a value
-  s2 --> s3: the adapter replies
-  s2 --> s4: session, frame or decoder profile changes
-  s8 --> s9: the adapter replies
-  s8 --> s10: you replace the requested view or expression
-  s8 --> s11: session, frame or decoder profile changes
-  s16 --> s17: the adapter replies
-  s16 --> s18: you replace the requested view or expression
-  s16 --> s19: session, frame or decoder profile changes
-  s24 --> s25: the adapter replies
-  s24 --> s26: you remove the watch
-  s24 --> s27: session, frame or decoder profile changes
-  s26 --> s28: the adapter replies
-  s10 --> s12: the adapter replies
-  s18 --> s20: the adapter replies
-  s4 --> s5: the adapter replies
-  s11 --> s13: the adapter replies
-  s19 --> s21: the adapter replies
-  s27 --> s29: the adapter replies
-  classDef breaks fill:#ffecee,stroke:#e72e3b,stroke-width:2.5px,color:#cd2834
-  class s1 bugPath
-  class s2 bugPath
-  class s4 bugPath
-  class s5 breaks
-  class s5 bugPath
-  class s7 bugPath
-  class s8 bugPath
-  class s10 bugPath
-  class s12 breaks
-  class s12 bugPath
-  class s23 bugPath
-  class s24 bugPath
-  class s26 bugPath
-  class s28 breaks
-  class s28 bugPath
-```
 
 ### Remote
 
 [Skill report](remote-final/report.md) · [Mermaid](remote-final/chart.mmd) · [Pele SVG](remote-final/chart.svg)
 
-![Remote](remote-final/chart.svg)
-
-```mermaid
----
-title: "Remote key delivery across docking"
----
-stateDiagram-v2
-  state "Legend" as legend {
-    lg0: Breaks NoOldCallback
-    lg1: Path to the NoOldCallback bug
-  }
-  class lg0 breaks
-  class lg1 bugPath
-  s0: starting
-  s1: ready
-  s2: closed
-  s3: ready / key queued
-  s4: closed / key queued
-  s5: closed / key applied
-  [*] --> s0
-  s0 --> s1: viewer attaches
-  s0 --> s2: startup fails and releases resources
-  s1 --> s2: you dock into a local host
-  s1 --> s3: viewer sends a key
-  s3 --> s1: scheduled key runs
-  s3 --> s4: you dock into a local host
-  s4 --> s5: scheduled key runs
-  classDef breaks fill:#ffecee,stroke:#e72e3b,stroke-width:2.5px,color:#cd2834
-  class s0 bugPath
-  class s1 bugPath
-  class s3 bugPath
-  class s4 bugPath
-  class s5 breaks
-  class s5 bugPath
-```
-
 ### Tickets
 
 [Skill report](tickets-review/report.md) · [Mermaid](tickets-review/chart.mmd) · [Pele SVG](tickets-review/chart.svg)
-
-![Tickets](tickets-review/chart.svg)
-
-```mermaid
----
-title: "MCP ticket and sidecar fences"
----
-stateDiagram-v2
-  direction LR
-  state "At the same time" as all {
-    state "Ticket" as r0 {
-      s0: pending
-      s1: done
-      s2: absent
-      [*] --> s0
-      s0 --> s1: event or timeout settles the wait
-      s1 --> s2: caller collects its reply [when Caller is waiting]
-      s0 --> s2: next call collects idle tickets
-      s1 --> s2: next call collects idle tickets
-    }
-    --
-    state "Caller" as r1 {
-      s3: waiting
-      s4: canceled
-      s5: delivered
-      [*] --> s3
-      s3 --> s4: caller cancels its wait
-      s3 --> s5: caller collects its reply [when Ticket is done and Wait is settled]
-    }
-    --
-    state "Wait" as r2 {
-      s6: listening
-      s7: settled
-      [*] --> s6
-      s6 --> s7: event or timeout settles the wait
-    }
-    --
-    state "Sidecar" as r3 {
-      s8: original
-      s9: replacement
-      [*] --> s8
-      s8 --> s9: you restart the sidecar
-    }
-  }
-```
 
 ### Preview
 
 [Skill report](preview/report.md) · [Mermaid](preview/chart.mmd) · [Pele SVG](preview/chart.svg)
 
-![Preview](preview/chart.svg)
-
-```mermaid
----
-title: "Preview mutation boundary"
----
-stateDiagram-v2
-  state "Legend" as legend {
-    lg0: Breaks PreviewNeverAdapterRef or PreviewReadOnly
-    lg1: Path to the PreviewNeverAdapterRef or PreviewReadOnly bug
-  }
-  class lg0 breaks
-  class lg1 bugPath
-  s0: mcp / shown
-  s1: ui / shown
-  s2: mcp / preview sent to adapter
-  s3: ui / done
-  [*] --> s0
-  [*] --> s1
-  s0 --> s2: you try to edit a preview
-  s1 --> s3: you try to edit a preview
-  classDef breaks fill:#ffecee,stroke:#e72e3b,stroke-width:2.5px,color:#cd2834
-  class s0 bugPath
-  class s2 breaks
-  class s2 bugPath
-```
-
 ### Startup
 
 [Skill report](startup/report.md) · [Mermaid](startup/chart.mmd) · [Pele SVG](startup/chart.svg)
-
-![Startup](startup/chart.svg)
-
-```mermaid
----
-title: "Startup reply fencing"
----
-stateDiagram-v2
-  s0: idle
-  s1: waiting
-  s2: closed
-  s3: ready
-  [*] --> s0
-  s0 --> s1: spawn viewer and request readiness
-  s1 --> s2: timeout or cancel releases resources
-  s1 --> s3: current startup reply arrives
-  s3 --> s2: timeout or cancel releases resources
-```
