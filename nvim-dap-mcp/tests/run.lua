@@ -86,6 +86,7 @@ local function new_fake_session()
     local session
     session = {
         id = 1,
+        on_close = {},
         stopped_thread_id = 1,
         capabilities = { supportsSetVariable = true },
         threads = { [1] = { id = 1, name = "main", frames = fixtures.stackTrace.stackFrames } },
@@ -431,6 +432,193 @@ ok(
     "removing the last breakpoint broadcasts an explicit empty list for that source",
     vim.inspect(last_broadcast)
 )
+
+group("pause readiness and advertised frame regressions")
+
+local dap = require("dap")
+local function emit(phase, event, session, body)
+    local callbacks = {}
+    for key, callback in pairs(dap.listeners[phase][event]) do
+        if key:match("^dap%-mcp%.") then
+            callbacks[#callbacks + 1] = callback
+        end
+    end
+    for _, callback in ipairs(callbacks) do
+        callback(session, body or {})
+    end
+end
+local function collect(ticket, timeout)
+    local result
+    vim.wait(timeout or 500, function()
+        local polled = dispatch.poll(ticket)
+        if polled.ok and polled.result.pending then
+            return false
+        end
+        result = polled
+        return true
+    end, 2)
+    return result
+end
+local original = fake
+fake = new_fake_session()
+local request = fake.request
+local serial = 1000
+fake.request = function(self, command, args, callback)
+    if command ~= "stackTrace" then
+        return request(self, command, args, callback)
+    end
+    serial = serial + 10
+    local frames = vim.deepcopy(fixtures.stackTrace.stackFrames)
+    for i, frame in ipairs(frames) do
+        frame.id = serial + i
+    end
+    local co = coroutine.running()
+    vim.schedule(function()
+        coroutine.resume(co, nil, { stackFrames = frames })
+    end)
+    return coroutine.yield()
+end
+local advertised = run("get_stack", {}).result.frames
+local exact = run("select_frame", { frame_id = advertised[2].id })
+ok(exact.ok, "Delve-style newly allocated advertised frame is selectable")
+if exact.ok then
+    eq(fake.frame_set.id, advertised[2].id, "selection uses the exact advertised ID")
+end
+emit("before", "event_continued", fake)
+emit("before", "event_stopped", fake)
+eq(run("select_frame", { frame_id = advertised[2].id }).error.code, "unknown_frame", "previous pause IDs expire")
+local pause = require("dap-mcp.pause")
+for _, event in ipairs({ "restart", "event_terminated", "event_exited", "event_invalidated" }) do
+    local frames = run("get_stack", {}).result.frames
+    emit("before", event, fake, { areas = { "stacks" } })
+    eq(pause.frame(fake, 1, frames[1].id), nil, event .. " invalidates advertised frames")
+end
+local active_token = pause.token(fake)
+emit("before", "event_invalidated", fake, { areas = { "variables" } })
+eq(pause.token(fake), active_token, "variable invalidation preserves stack IDs")
+local real_request = fake.request
+fake.request = function(self, command, args, callback)
+    if command == "stackTrace" then
+        vim.schedule(function()
+            emit("before", "event_continued", self)
+        end)
+    end
+    return real_request(self, command, args, callback)
+end
+eq(run("get_stack", {}).error.code, "not_stopped", "in-flight stack response cannot publish across pause epochs")
+fake.request = real_request
+local other_thread = run("get_stack", { thread_id = 2 }).result.frames
+eq(
+    run("select_frame", { frame_id = other_thread[1].id }).error.code,
+    "unknown_frame",
+    "other thread frames cannot select on stopped thread"
+)
+local old_session_frames = run("get_stack", {}).result.frames
+fake = new_fake_session()
+eq(
+    run("select_frame", { frame_id = old_session_frames[1].id }).error.code,
+    "unknown_frame",
+    "advertised IDs do not cross sessions"
+)
+
+fake.stopped_thread_id = nil
+fake.current_frame = nil
+fake.threads[1].frames = nil
+local delayed = dapmcp.call("wait_for_pause", { timeout_ms = 300 }).result.ticket
+emit("before", "event_stopped", fake, { threadId = 1 })
+emit("after", "event_stopped", fake, { threadId = 1 })
+vim.defer_fn(function()
+    fake.stopped_thread_id = 1
+    fake.current_frame = fixtures.stackTrace.stackFrames[1]
+    fake.threads[1].frames = fixtures.stackTrace.stackFrames
+end, 40)
+local ready = collect(delayed)
+ok(
+    ready and ready.ok and ready.result.state == "stopped" and ready.result.frame ~= nil,
+    "stopped event waits for asynchronous frame population"
+)
+
+-- nvim-dap retains the previous frame/stack while the next stop loads.
+fake.stopped_thread_id = nil
+local next_stop = dapmcp.call("wait_for_pause", { timeout_ms = 200 }).result.ticket
+emit("before", "event_stopped", fake, { threadId = 1 })
+fake.stopped_thread_id = 1
+emit("after", "event_stopped", fake, { threadId = 1 })
+vim.defer_fn(function()
+    local frames = vim.deepcopy(fixtures.stackTrace.stackFrames)
+    frames[1].line = 23
+    fake.threads[1].frames = frames
+    fake.current_frame = frames[1]
+end, 35)
+local next_result = collect(next_stop)
+ok(
+    next_result and next_result.result.frame and next_result.result.frame.line == 23,
+    "next stop waits for replacement of previous pause frame"
+)
+
+-- A half-populated stop never becomes a successful fat snapshot.
+fake.current_frame = nil
+local incomplete = dapmcp.call("wait_for_pause", { timeout_ms = 30 }).result.ticket
+local incomplete_result = collect(incomplete)
+ok(incomplete_result and incomplete_result.result.timed_out, "incomplete stopped state reaches deadline")
+fake.current_frame = fixtures.stackTrace.stackFrames[1]
+local normal_request = fake.request
+local stalled_co
+fake.request = function()
+    stalled_co = coroutine.running()
+    return coroutine.yield()
+end
+local stalled = dapmcp.call("wait_for_pause", { timeout_ms = 30 }).result.ticket
+local stalled_result = collect(stalled)
+ok(stalled_result and stalled_result.result.timed_out, "snapshot adapter requests cannot exceed wait deadline")
+fake.request = normal_request
+coroutine.resume(stalled_co, nil, {})
+vim.wait(10, function()
+    return false
+end, 2)
+eq(dispatch.poll(stalled).error.code, "unknown_ticket", "late snapshot response cannot resurrect collected timeout")
+fake.stopped_thread_id = nil
+local isolated = dapmcp.call("wait_for_pause", { timeout_ms = 30 }).result.ticket
+emit("after", "event_exited", new_fake_session())
+local isolated_result = collect(isolated)
+ok(isolated_result and isolated_result.result.event == "timeout", "unrelated session exit cannot settle wait")
+local disconnected = dapmcp.call("wait_for_pause", { timeout_ms = 200 }).result.ticket
+for _, callback in pairs(fake.on_close or {}) do
+    callback(fake)
+end
+local disconnected_result = collect(disconnected)
+ok(disconnected_result and disconnected_result.result.event == "disconnected", "transport close settles wait")
+local terminating = dapmcp.call("wait_for_pause", { timeout_ms = 200 }).result.ticket
+for _, callback in pairs(fake.on_close) do
+    callback(fake)
+end
+emit("after", "event_terminated", fake)
+local terminating_result = collect(terminating)
+ok(
+    terminating_result and terminating_result.result.event == "terminated",
+    "normal termination wins over its synchronous transport close"
+)
+local replaced = dapmcp.call("wait_for_pause", { timeout_ms = 200 }).result.ticket
+fake = new_fake_session()
+local replaced_result = collect(replaced)
+ok(
+    replaced_result and replaced_result.result.event == "disconnected",
+    "session replacement cannot return another session snapshot"
+)
+fake.stopped_thread_id = nil
+fake.current_frame = nil
+fake.threads[1].frames = nil
+local failed_stack = dapmcp.call("wait_for_pause", { timeout_ms = 30 }).result.ticket
+emit("after", "event_stopped", fake, { threadId = 1 })
+-- nvim-dap leaves the selected frame unset when its stackTrace fails.
+fake.stopped_thread_id = 1
+local failed_stack_result = collect(failed_stack)
+ok(
+    failed_stack_result and failed_stack_result.result.timed_out,
+    "failed stack initialization reports timeout rather than ready stop"
+)
+fake = original
+require("dap-mcp.status").reset()
 
 group("wait_for_pause")
 

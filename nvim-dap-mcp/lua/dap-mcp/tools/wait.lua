@@ -26,15 +26,9 @@ registry.register({
     handler = function(args)
         local dap = require("dap")
 
+        local pause = require("dap-mcp.pause")
+        pause.attach()
         local session = util.session()
-        if session and session.stopped_thread_id then
-            local snapshot = status.compose()
-            snapshot.event = "already_stopped"
-            snapshot.timed_out = false
-
-            return snapshot
-        end
-
         local timeout = math.floor(tonumber(args.timeout_ms) or DEFAULT_TIMEOUT_MS)
         if timeout < 1 then
             util.fail("invalid_argument", "`timeout_ms` must be positive")
@@ -43,61 +37,135 @@ registry.register({
         counter = counter + 1
         local key = ("dap-mcp.wait.%d"):format(counter)
         local co = coroutine.running()
+        local settled, composing = false, false
+        local event = session and session.stopped_thread_id and "already_stopped" or "stopped"
+        local timer, deadline
 
-        local settled = false
-        local timer = nil
-
-        ---First wins: the timeout and the event race each other.
-        ---@param event string
-        local function finish(event)
+        local function finish(ending, snapshot)
             if settled then
                 return
             end
             settled = true
-
-            dap.listeners.after.event_stopped[key] = nil
-            dap.listeners.after.event_terminated[key] = nil
-            dap.listeners.after.event_exited[key] = nil
-
-            if timer then
-                timer:stop()
-                timer:close()
-                timer = nil
+            for _, name in ipairs({ "event_stopped", "event_terminated", "event_exited" }) do
+                dap.listeners.after[name][key] = nil
             end
-
-            -- Always defer: `finish` may be reached from a listener that
-            -- nvim-dap invoked while this coroutine was still running.
+            if session and session.on_close then
+                session.on_close[key] = nil
+            end
+            for _, handle in ipairs({ timer, deadline }) do
+                handle:stop()
+                handle:close()
+            end
+            snapshot = snapshot or { state = ending == "timeout" and "running" or "terminated", stack = {} }
+            snapshot.event = ending
+            snapshot.timed_out = ending == "timeout"
             vim.schedule(function()
-                coroutine.resume(co, event)
+                coroutine.resume(co, snapshot)
             end)
         end
 
-        dap.listeners.after.event_stopped[key] = function()
-            finish("stopped")
-        end
-        dap.listeners.after.event_terminated[key] = function()
-            finish("terminated")
-        end
-        dap.listeners.after.event_exited[key] = function()
-            finish("exited")
+        local function belongs(candidate)
+            if not session and candidate == util.session() then
+                session = candidate
+            end
+            return session ~= nil and candidate == session
         end
 
+        local function check()
+            if settled then
+                return
+            end
+            local focused = util.session()
+            if not session then
+                session = focused
+            elseif focused ~= session then
+                finish("disconnected")
+                return
+            end
+            if not session then
+                return
+            end
+            if session.on_close then
+                session.on_close[key] = function()
+                    -- Normal termination closes before its after-event listeners.
+                    vim.schedule(function()
+                        finish("disconnected")
+                    end)
+                end
+            end
+            local thread_id = session.stopped_thread_id
+            local thread = (session.threads or {})[thread_id]
+            local frame = session.current_frame
+            local token = pause.token(session)
+            -- event_stopped yields while nvim-dap fetches threads/stackTrace.
+            -- Only compose after its selected frame belongs to the loaded stack.
+            local ready = false
+            for _, candidate in ipairs(thread and thread.frames or {}) do
+                if
+                    frame
+                    and candidate.id == frame.id
+                    and (frame ~= token.previous_frame or thread.frames ~= token.previous_frames)
+                then
+                    ready = true
+                    break
+                end
+            end
+            if composing or not ready then
+                return
+            end
+            composing = true
+            coroutine.wrap(function()
+                local ok, snapshot = pcall(status.compose)
+                composing = false
+                if
+                    not settled
+                    and ok
+                    and util.session() == session
+                    and pause.token(session) == token
+                    and session.stopped_thread_id == thread_id
+                    and session.current_frame == frame
+                then
+                    finish(event, snapshot)
+                end
+            end)()
+        end
+
+        dap.listeners.after.event_stopped[key] = function(candidate)
+            if belongs(candidate) then
+                event = "stopped"
+                vim.schedule(check)
+            end
+        end
+        for _, name in ipairs({ "terminated", "exited" }) do
+            dap.listeners.after["event_" .. name][key] = function(candidate)
+                if belongs(candidate) then
+                    finish(name)
+                end
+            end
+        end
+
+        if session and session.on_close then
+            session.on_close[key] = function()
+                vim.schedule(function()
+                    finish("disconnected")
+                end)
+            end
+        end
         timer = vim.uv.new_timer()
-        timer:start(timeout, 0, function()
-            finish("timeout")
+        deadline = vim.uv.new_timer()
+        timer:start(0, 10, vim.schedule_wrap(check))
+        deadline:start(timeout, 0, function()
+            -- Never issue adapter RPCs on the deadline path: they may never reply.
+            local current = util.session()
+            if session and current ~= session then
+                finish("disconnected")
+            elseif not current then
+                finish("timeout", status.compose()) -- No session means no adapter RPCs.
+            else
+                finish("timeout", { state = current.stopped_thread_id and "stopped" or "running", stack = {} })
+            end
         end)
 
-        local event = coroutine.yield()
-
-        local snapshot = status.compose()
-        if event == "terminated" or event == "exited" then
-            -- Listener order across subscription ids is undefined: the status module may
-            -- not have observed the same event yet, so pin the terminal state here
-            snapshot = { state = "terminated", stack = {} }
-        end
-        snapshot.event = event
-        snapshot.timed_out = event == "timeout"
-
-        return snapshot
+        return coroutine.yield()
     end,
 })

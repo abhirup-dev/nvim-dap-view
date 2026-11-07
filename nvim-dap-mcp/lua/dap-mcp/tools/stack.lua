@@ -1,6 +1,7 @@
 ---Stack and thread tools.
 local registry = require("dap-mcp.registry")
 local util = require("dap-mcp.util")
+local pause = require("dap-mcp.pause")
 
 ---@param frame dap.StackFrame
 ---@return table
@@ -26,12 +27,22 @@ registry.register({
     handler = function(args)
         local session = util.need_stopped_session()
         local thread_id = args.thread_id or session.stopped_thread_id
+        local token = pause.token(session)
+        local stopped_thread_id = session.stopped_thread_id
 
         local response = util.request(session, "stackTrace", {
             threadId = thread_id,
             startFrame = 0,
             levels = args.levels and math.floor(args.levels) or nil,
         })
+
+        if
+            util.session() ~= session
+            or session.stopped_thread_id ~= stopped_thread_id
+            or not pause.remember(session, token, thread_id, response.stackFrames or {})
+        then
+            util.fail("not_stopped", "The session changed while fetching the stack")
+        end
 
         local frames = {}
         for _, frame in ipairs(response.stackFrames or {}) do
@@ -61,10 +72,10 @@ registry.register({
         local frame_id = math.floor(args.frame_id)
 
         ---@type dap.StackFrame?
-        local target = nil
+        local target = pause.frame(session, session.stopped_thread_id, frame_id)
 
         local thread = session.threads[session.stopped_thread_id]
-        for _, frame in ipairs((thread or {}).frames or {}) do
+        for _, frame in ipairs(target and {} or (thread or {}).frames or {}) do
             if frame.id == frame_id then
                 target = frame
                 break
@@ -72,10 +83,19 @@ registry.register({
         end
 
         if not target then
+            local token = pause.token(session)
+            local stopped_thread_id = session.stopped_thread_id
             local response = util.request(session, "stackTrace", {
                 threadId = session.stopped_thread_id,
                 startFrame = 0,
             })
+            if
+                util.session() ~= session
+                or pause.token(session) ~= token
+                or session.stopped_thread_id ~= stopped_thread_id
+            then
+                util.fail("not_stopped", "The session changed while selecting a frame")
+            end
             for _, frame in ipairs(response.stackFrames or {}) do
                 if frame.id == frame_id then
                     target = frame
