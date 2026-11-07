@@ -73,8 +73,10 @@ jobs:
         run: |
           python3 examples/decoders/make_fixture.py
           go build -gcflags='all=-N -l' -o examples/decoders/fixture examples/decoders/main.go
-      - name: Real Delve decoder integration in both hosts
+      - name: Real Delve decoder and matrix integration in both hosts
         run: |
           HOST=split nvim --headless -u NONE -l tests/integration/decoder_delve.lua
           HOST=tab nvim --headless -u NONE -l tests/integration/decoder_delve.lua
+          HOST=split nvim --headless -u NONE -l tests/integration/hover_matrix.lua
+          HOST=tab nvim --headless -u NONE -l tests/integration/hover_matrix.lua
           python3 tests/integration/decoder_rpc.py

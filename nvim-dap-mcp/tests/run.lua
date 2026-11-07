@@ -624,7 +624,9 @@ eq(
 group("ticket idle expiry")
 local clock = vim.uv.now
 local now = clock()
-vim.uv.now = function() return now end
+vim.uv.now = function()
+    return now
+end
 fake.stopped_thread_id = nil
 local live = dapmcp.call("wait_for_pause", { timeout_ms = 600000 }).result.ticket
 now = now + 299000
@@ -635,10 +637,16 @@ now = now + 301000
 eq(dispatch.poll(live).error.code, "unknown_ticket", "abandoned wait expires")
 local callbacks = {}
 for key, callback in pairs(dap.listeners.after.event_stopped) do
-    if key:match("dap%-mcp.wait") then callbacks[#callbacks + 1] = callback end
+    if key:match("dap%-mcp.wait") then
+        callbacks[#callbacks + 1] = callback
+    end
 end
-for _, callback in ipairs(callbacks) do callback(fake, { reason = "breakpoint" }) end
-vim.wait(100, function() return false end, 10)
+for _, callback in ipairs(callbacks) do
+    callback(fake, { reason = "breakpoint" })
+end
+vim.wait(100, function()
+    return false
+end, 10)
 eq(dispatch.poll(live).error.code, "unknown_ticket", "late completion does not resurrect ticket")
 vim.uv.now = clock
 
@@ -647,13 +655,19 @@ fake.stopped_thread_id = nil
 local reset_ticket = dapmcp.call("wait_for_pause", { timeout_ms = 600000 }).result.ticket
 local reset_callbacks = {}
 for key, callback in pairs(dap.listeners.after.event_stopped) do
-    if key:match("dap%-mcp.wait") then reset_callbacks[#reset_callbacks + 1] = callback end
+    if key:match("dap%-mcp.wait") then
+        reset_callbacks[#reset_callbacks + 1] = callback
+    end
 end
 ok(#reset_callbacks > 0, "pending wait registered its listener")
 dispatch.reset()
 eq(dispatch.poll(reset_ticket).error.code, "unknown_ticket", "reset removes pending wait")
-for _, callback in ipairs(reset_callbacks) do callback(fake, { reason = "breakpoint" }) end
-vim.wait(100, function() return false end, 10)
+for _, callback in ipairs(reset_callbacks) do
+    callback(fake, { reason = "breakpoint" })
+end
+vim.wait(100, function()
+    return false
+end, 10)
 eq(dispatch.poll(reset_ticket).error.code, "unknown_ticket", "late wait completion after reset cannot resurrect ticket")
 
 --------------------------------------------------------------------------------

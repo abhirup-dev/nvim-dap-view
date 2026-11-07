@@ -116,14 +116,17 @@ M.start = function(opts)
 
     local ready = false
     local output = ""
-    local handle = vim.system(cmd, { stderr = true, stdout = function(_, data)
-        if data then
-            output = output .. data
-            if output:find("DAP_MCP_READY", 1, true) then
-                ready = true
+    local handle = vim.system(cmd, {
+        stderr = true,
+        stdout = function(_, data)
+            if data then
+                output = output .. data
+                if output:find("DAP_MCP_READY", 1, true) then
+                    ready = true
+                end
             end
-        end
-    end }, function(result)
+        end,
+    }, function(result)
         vim.schedule(function()
             -- Only clear the state if this is still the process we started;
             -- a stop-then-start race must not wipe the new handle.
@@ -152,7 +155,9 @@ M.start = function(opts)
     state.started_at = vim.uv.now()
     state.last_error = nil
 
-    vim.wait(5000, function() return ready or state.handle ~= handle end, 20)
+    vim.wait(5000, function()
+        return ready or state.handle ~= handle
+    end, 20)
     if not ready or state.handle ~= handle then
         if state.handle == handle then
             state.last_error = "sidecar did not become ready within 5 seconds"
