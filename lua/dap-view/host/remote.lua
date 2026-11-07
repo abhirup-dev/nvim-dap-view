@@ -248,8 +248,13 @@ end
 ---@return dapview.RemoteViewer
 local attach_viewer = function(deadline)
     local ready = vim.wait(math.max(0, deadline - vim.uv.now()), function()
-        local ok, result = pcall(vim.rpcrequest, chan, "nvim_exec_lua",
-            "return type(_G.dapview_viewer) == 'table' and type(_G.dapview_viewer.attach) == 'function'", {})
+        local ok, result = pcall(
+            vim.rpcrequest,
+            chan,
+            "nvim_exec_lua",
+            "return type(_G.dapview_viewer) == 'table' and type(_G.dapview_viewer.attach) == 'function'",
+            {}
+        )
         return ok and result == true
     end, 50)
     if not ready then
