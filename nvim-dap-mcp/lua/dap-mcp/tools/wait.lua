@@ -93,40 +93,15 @@ registry.register({
                     end)
                 end
             end
-            local thread_id = session.stopped_thread_id
-            local thread = (session.threads or {})[thread_id]
-            local frame = session.current_frame
-            local token = pause.token(session)
-            -- event_stopped yields while nvim-dap fetches threads/stackTrace.
-            -- Only compose after its selected frame belongs to the loaded stack.
-            -- Delve may allocate new IDs for get_stack; select_frame can select
-            -- one of those without replacing nvim-dap's original thread cache.
-            local ready = frame and pause.frame(session, thread_id, frame.id) == frame or false
-            for _, candidate in ipairs(thread and thread.frames or {}) do
-                if
-                    frame
-                    and candidate.id == frame.id
-                    and (frame ~= token.previous_frame or thread.frames ~= token.previous_frames)
-                then
-                    ready = true
-                    break
-                end
-            end
-            if composing or not ready then
+            local read = pause.capture(session)
+            if composing or not pause.ready_frame(read) then
                 return
             end
             composing = true
             coroutine.wrap(function()
                 local ok, snapshot = pcall(status.compose)
                 composing = false
-                if
-                    not settled
-                    and ok
-                    and util.session() == session
-                    and pause.token(session) == token
-                    and session.stopped_thread_id == thread_id
-                    and session.current_frame == frame
-                then
+                if not settled and ok and pause.is_selected(read) then
                     finish(event, snapshot)
                 end
             end)()

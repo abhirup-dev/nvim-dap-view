@@ -27,8 +27,7 @@ registry.register({
     handler = function(args)
         local session = util.need_stopped_session()
         local thread_id = args.thread_id or session.stopped_thread_id
-        local token = pause.token(session)
-        local stopped_thread_id = session.stopped_thread_id
+        local read = pause.capture(session)
 
         local response = util.request(session, "stackTrace", {
             threadId = thread_id,
@@ -37,9 +36,8 @@ registry.register({
         })
 
         if
-            util.session() ~= session
-            or session.stopped_thread_id ~= stopped_thread_id
-            or not pause.remember(session, token, thread_id, response.stackFrames or {})
+            not pause.is_current(read)
+            or not pause.remember(session, read.token, thread_id, response.stackFrames or {})
         then
             util.fail("not_stopped", "The session changed while fetching the stack")
         end
@@ -83,17 +81,12 @@ registry.register({
         end
 
         if not target then
-            local token = pause.token(session)
-            local stopped_thread_id = session.stopped_thread_id
+            local read = pause.capture(session)
             local response = util.request(session, "stackTrace", {
                 threadId = session.stopped_thread_id,
                 startFrame = 0,
             })
-            if
-                util.session() ~= session
-                or pause.token(session) ~= token
-                or session.stopped_thread_id ~= stopped_thread_id
-            then
+            if not pause.is_current(read) then
                 util.fail("not_stopped", "The session changed while selecting a frame")
             end
             for _, frame in ipairs(response.stackFrames or {}) do
