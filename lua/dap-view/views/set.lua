@@ -3,11 +3,49 @@ local adapter = require("dap-view.util.adapter")
 
 local M = {}
 
+---Refresh after the adapter has accepted an edit, rather than while the input
+---dialog or request is still pending. A late reply must not refresh another
+---session or frame that the user has since selected.
+---@param session dap.Session
+---@param frame dap.StackFrame?
+local refresh_variables = function(session, frame)
+    vim.schedule(function()
+        if require("dap").session() ~= session or session.current_frame ~= frame or not session.stopped_thread_id then
+            return
+        end
+
+        require("dap-view.refresher").refresh_all_expressions()
+
+        if frame then
+            coroutine.wrap(function()
+                -- Adapters such as Delve cache variables under their old scope
+                -- references even after accepting a successful edit.
+                local err, response = session:request("scopes", { frameId = frame.id })
+                if
+                    err
+                    or not response
+                    or require("dap").session() ~= session
+                    or session.current_frame ~= frame
+                    or not session.stopped_thread_id
+                then
+                    return
+                end
+                frame.scopes = response.scopes
+                if state.current_section ~= "scopes" then
+                    return
+                end
+                require("dap-view.views").switch_to_view("scopes")
+            end)()
+        end
+    end)
+end
+
 ---@param name string
 ---@param value string
 ---@param variables_reference number
 local set_var = function(name, value, variables_reference)
     local session = assert(require("dap").session(), "has active session")
+    local frame = session.current_frame
 
     if session.capabilities.supportsSetVariable then
         coroutine.wrap(function()
@@ -16,6 +54,8 @@ local set_var = function(name, value, variables_reference)
 
             if err then
                 vim.notify("Failed to set variable " .. name .. " to value " .. value)
+            else
+                refresh_variables(session, frame)
             end
         end)()
     else
@@ -28,6 +68,7 @@ end
 ---@param variable_path? string
 M.set_expr = function(expr, value, variable_path)
     local session = assert(require("dap").session(), "has active session")
+    local frame = session.current_frame
 
     if session.capabilities.supportsSetExpression then
         coroutine.wrap(function()
@@ -38,11 +79,15 @@ M.set_expr = function(expr, value, variable_path)
 
             if err then
                 vim.notify("Failed to set expression " .. expr .. " to value " .. value)
-            elseif variable_path and response and adapter.is_js_adapter(session.config.type) then
-                -- Workaround for https://github.com/microsoft/vscode-js-debug/issues/2320
-                -- We know for a fact `setExpression` will be used
-                state.variable_path_to_value[variable_path] = response.value
-                state.variable_path_to_set_variables[variable_path] = true
+            else
+                if variable_path and response and adapter.is_js_adapter(session.config.type) then
+                    -- Workaround for https://github.com/microsoft/vscode-js-debug/issues/2320
+                    -- We know for a fact `setExpression` will be used
+                    state.variable_path_to_value[variable_path] = response.value
+                    state.variable_path_to_set_variables[variable_path] = true
+                end
+
+                refresh_variables(session, frame)
             end
         end)()
     else

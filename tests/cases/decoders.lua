@@ -43,6 +43,9 @@ fake.current_frame = { id = 11, scopes = { { name = "Locals", variablesReference
 local raw = '{"age":37,"address":{"city":"Kolkata"},"tags":["a","b"]}'
 local function respond(command, args)
     assert(not args.variablesReference or args.variablesReference >= 0, "synthetic reference sent to adapter")
+    if command == "scopes" then
+        return { scopes = { { name = "Locals", variablesReference = 100 } } }
+    end
     if command == "evaluate" then
         return { result = raw, variablesReference = 0, type = "string" }
     end

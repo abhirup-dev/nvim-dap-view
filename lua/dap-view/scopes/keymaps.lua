@@ -30,13 +30,7 @@ return {
     },
     set_value = {
         action = function()
-            trigger.at_cursor(function(line)
-                if require("dap-view.scopes.actions").set_value(line) then
-                    coroutine.wrap(function()
-                        require("dap-view.views").switch_to_view("scopes")
-                    end)()
-                end
-            end)
+            trigger.at_cursor(require("dap-view.scopes.actions").set_value)
         end,
         desc = "set value",
     },
