@@ -68,6 +68,28 @@ state.tree_root_stack = { "Locals.a", "Locals.a" }
 render()
 H.pump(130)
 H.eq(state.tree_root_stack, { "Locals.a", "Locals.a" }, "stale missing target cannot pop current stack")
+-- Publication belongs to the section, buffer and window captured by this render.
+local published = vim.deepcopy(state.line_to_variable_path)
+local target_buf, target_win = state.bufnr, state.winnr
+for _, target in ipairs({ "section", "buffer", "window" }) do
+    missing = true
+    render()
+    if target == "section" then
+        state.current_section = "watches"
+    elseif target == "buffer" then
+        state.bufnr = vim.api.nvim_create_buf(false, true)
+    else
+        state.winnr = nil
+    end
+    H.pump(100)
+    H.eq(state.line_to_variable_path, published, target .. " change rejects stale index publication")
+    H.eq(state.tree_root_stack, { "Locals.a", "Locals.a" }, target .. " change rejects stale root cleanup")
+    if target == "buffer" then
+        vim.api.nvim_buf_delete(state.bufnr, { force = true })
+    end
+    state.current_section, state.bufnr, state.winnr = "scopes", target_buf, target_win
+end
+missing = false
 -- Frame and session changes invalidate a pending result before any cleanup/publication.
 local before = vim.api.nvim_buf_get_lines(state.bufnr, 0, -1, false)
 missing = true

@@ -487,6 +487,10 @@ if exact.ok then
     local selected_pause = run("wait_for_pause", { timeout_ms = 50 })
     ok(selected_pause.ok and not selected_pause.result.timed_out, "advertised selected frame remains a ready pause")
     eq(selected_pause.result.frame and selected_pause.result.frame.id, advertised[2].id, "wait retains selected frame")
+    emit("before", "event_invalidated", fake, { areas = { "variables" } })
+    local after_variables = run("wait_for_pause", { timeout_ms = 50 })
+    ok(not after_variables.result.timed_out, "variables invalidation preserves retained selected readiness")
+    eq(after_variables.result.frame.id, advertised[2].id, "variables invalidation preserves exact advertised selection")
 end
 emit("before", "event_continued", fake)
 emit("before", "event_stopped", fake)
@@ -568,13 +572,25 @@ ok(incomplete_result and incomplete_result.result.timed_out, "incomplete stopped
 fake.current_frame = fixtures.stackTrace.stackFrames[1]
 local normal_request = fake.request
 local stalled_co
+local stalled_requests = 0
 fake.request = function()
+    stalled_requests = stalled_requests + 1
     stalled_co = coroutine.running()
     return coroutine.yield()
 end
 local stalled = dapmcp.call("wait_for_pause", { timeout_ms = 30 }).result.ticket
 local stalled_result = collect(stalled)
 ok(stalled_result and stalled_result.result.timed_out, "snapshot adapter requests cannot exceed wait deadline")
+eq(stalled_requests, 1, "deadline does not issue requests while composition is pending")
+local active_wait_listeners = 0
+for _, event in ipairs({ "event_stopped", "event_terminated", "event_exited" }) do
+    for key in pairs(dap.listeners.after[event]) do
+        if key:match("^dap%-mcp%.wait%.") then
+            active_wait_listeners = active_wait_listeners + 1
+        end
+    end
+end
+eq(active_wait_listeners, 0, "composition timeout removes all wait event listeners")
 fake.request = normal_request
 coroutine.resume(stalled_co, nil, {})
 vim.wait(10, function()
@@ -621,6 +637,88 @@ ok(
     failed_stack_result and failed_stack_result.result.timed_out,
     "failed stack initialization reports timeout rather than ready stop"
 )
+-- Caller characterization: stack reads own the pause/thread, while wait also
+-- owns the exact selected frame through asynchronous status composition.
+group("pause read ownership characterization")
+for _, change in ipairs({ "selection", "thread", "pause", "session" }) do
+    fake = new_fake_session()
+    local owner = fake
+    local base_request = owner.request
+    owner.request = function(self, command, args, callback)
+        if command == "stackTrace" then
+            vim.schedule(function()
+                if change == "selection" then
+                    self.current_frame = self.threads[1].frames[2]
+                elseif change == "thread" then
+                    self.stopped_thread_id = 2
+                elseif change == "pause" then
+                    emit("before", "event_stopped", self, { threadId = 1 })
+                else
+                    fake = new_fake_session()
+                end
+            end)
+        end
+        return base_request(self, command, args, callback)
+    end
+    local result = run("get_stack", {})
+    if change == "selection" then
+        ok(result.ok, "stack response survives selection change within the same pause")
+    else
+        eq(result.error.code, "not_stopped", "stack response rejects changed " .. change)
+    end
+end
+
+for _, change in ipairs({ "selection", "pause", "session" }) do
+    fake = new_fake_session()
+    local owner = fake
+    local pending_co
+    owner.request = function()
+        pending_co = coroutine.running()
+        return coroutine.yield()
+    end
+    local ticket = dapmcp.call("wait_for_pause", { timeout_ms = 40 }).result.ticket
+    ok(
+        vim.wait(100, function()
+            return pending_co ~= nil
+        end, 2),
+        "wait begins composition before " .. change .. " change"
+    )
+    if change == "selection" then
+        owner.current_frame = vim.deepcopy(owner.current_frame)
+    elseif change == "pause" then
+        emit("before", "event_stopped", owner, { threadId = 1 })
+    else
+        fake = new_fake_session()
+    end
+    -- Complete the first stack request. Optional locals have no scopes here.
+    owner.request = function(_, command)
+        if command == "stackTrace" then
+            return coroutine.yield()
+        end
+        return nil, {}
+    end
+    assert(coroutine.resume(pending_co, nil, { stackFrames = fixtures.stackTrace.stackFrames }))
+    local result = collect(ticket)
+    if change == "session" then
+        eq(result.result.event, "disconnected", "wait rejects composition from replaced session")
+    else
+        -- Any retry's stack request remains pending; only the old composition
+        -- can succeed before the deadline. Selection changes even with equal IDs.
+        ok(result.result.timed_out, "wait rejects composition after " .. change .. " change")
+    end
+end
+
+fake = new_fake_session()
+local before_loading = #fake.received
+emit("before", "event_stopped", fake, { threadId = 1 })
+local loading = run("wait_for_pause", { timeout_ms = 25 })
+ok(loading.result.timed_out, "already stopped with previous stack still loading is not ready")
+eq(#fake.received, before_loading, "loading stop and deadline issue no adapter requests")
+local replacement = vim.deepcopy(fake.threads[1].frames)
+fake.threads[1].frames = replacement
+local loaded = run("wait_for_pause", { timeout_ms = 100 })
+eq(loaded.result.event, "already_stopped", "replacement stack makes existing selected ID ready")
+
 fake = original
 require("dap-mcp.status").reset()
 

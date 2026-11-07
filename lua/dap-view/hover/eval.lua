@@ -1,3 +1,4 @@
+local ui_context = require("dap-view.context")
 local state = require("dap-view.state")
 
 local M = {}
@@ -16,18 +17,14 @@ M.evaluate_expression = function(expression, context)
     local session = assert(require("dap").session(), "has active session")
 
     local frame_id = session.current_frame and session.current_frame.id
-    local stamp = require("dap-view.decoders").context(session, expression)
+    local stamp = ui_context.capture(session)
 
     context = context or session.capabilities.supportsEvaluateForHovers and "hover" or "repl"
 
     local err, response =
         session:request("evaluate", { expression = expression, context = context, frameId = frame_id })
 
-    if
-        sequence ~= request_sequence
-        or state.hover ~= expression
-        or not require("dap-view.decoders").is_current(stamp)
-    then
+    if sequence ~= request_sequence or state.hover ~= expression or not ui_context.is_current(stamp) then
         return
     end
     local expanded = not state.hovered_expression or state.hovered_expression.expanded

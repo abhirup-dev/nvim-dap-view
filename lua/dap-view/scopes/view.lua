@@ -1,3 +1,4 @@
+local context = require("dap-view.context")
 local dap = require("dap")
 
 local views = require("dap-view.views")
@@ -201,10 +202,10 @@ M.show = function()
 
         local session = tmp_session
         render.session = session
-        local stamp = require("dap-view.decoders").context(session, "scopes")
+        local stamp = context.capture(session)
         local function is_current()
             return version == generation
-                and require("dap-view.decoders").is_current(stamp)
+                and context.is_current(stamp)
                 and shared_state.current_section == "scopes"
                 and shared_state.bufnr == state.bufnr
                 and shared_state.winnr == state.winnr

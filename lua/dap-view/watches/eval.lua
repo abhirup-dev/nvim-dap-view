@@ -1,3 +1,4 @@
+local context = require("dap-view.context")
 local state = require("dap-view.state")
 
 local M = {}
@@ -16,12 +17,12 @@ M.evaluate_expression = function(expression, default_expanded, id)
     local session = assert(require("dap").session(), "has active session")
 
     local frame_id = session.current_frame and session.current_frame.id
-    local stamp = require("dap-view.decoders").context(session, expression)
+    local stamp = context.capture(session)
 
     local err, response =
         session:request("evaluate", { expression = expression, context = "watch", frameId = frame_id })
 
-    if registration ~= (registrations[expression] or 0) or not require("dap-view.decoders").is_current(stamp) then
+    if registration ~= (registrations[expression] or 0) or not context.is_current(stamp) then
         return
     end
     if response then
@@ -86,7 +87,7 @@ M.evaluate_expression = function(expression, default_expanded, id)
         end
     end
 
-    if registration == (registrations[expression] or 0) and require("dap-view.decoders").is_current(stamp) then
+    if registration == (registrations[expression] or 0) and context.is_current(stamp) then
         state.watched_expressions[expression] = new_expression_view
     end
 end

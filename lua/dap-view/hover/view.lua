@@ -1,3 +1,4 @@
+local context = require("dap-view.context")
 local state = require("dap-view.state")
 local setup = require("dap-view.setup")
 local hl = require("dap-view.util.hl")
@@ -107,7 +108,7 @@ M.show = function(bufnr)
     local hover = assert(state.hovered_expression, "has hover state")
 
     session = assert(require("dap").session(), "has active session")
-    local stamp = require("dap-view.decoders").context(session, expr)
+    local stamp = context.capture(session)
     state.line_to_hover_path = {}
 
     ---@type dapview.Canvas
@@ -185,7 +186,7 @@ M.show = function(bufnr)
         height = height + 1
     end
 
-    if not require("dap-view.decoders").is_current(stamp) or not vim.api.nvim_buf_is_valid(bufnr) then
+    if not context.is_current(stamp) or not vim.api.nvim_buf_is_valid(bufnr) then
         return { 1, 1 }
     end
     util.set_lines(bufnr, 0, height, false, canvas.contents)
