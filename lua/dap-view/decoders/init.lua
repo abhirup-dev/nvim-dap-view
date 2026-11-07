@@ -1,4 +1,5 @@
 -- Owner-side value decoding. Negative references belong exclusively to this module.
+local ui_context = require("dap-view.context")
 local M = {}
 local profiles, cache, nodes = {}, {}, {}
 local options = { commands = {}, allow_evaluate = false, max_bytes = 1048576 }
@@ -28,6 +29,9 @@ local function refresh()
 end
 
 function M.invalidate()
+    -- Profile/cache changes historically also fence pending UI evaluations and
+    -- renders. Keep that effect without making UI callers depend on decoding.
+    ui_context.invalidate()
     generation = generation + 1
     cache, nodes = {}, {}
 end
@@ -195,23 +199,17 @@ function M.setup(config)
 end
 
 local function context(session, path)
-    return {
-        session = session,
-        path = path,
-        frame_id = session.current_frame and session.current_frame.id,
-        generation = generation,
-    }
+    local ctx = ui_context.capture(session)
+    ctx.path, ctx.generation = path, generation
+    return ctx
 end
 
+-- Payload consumers (including trusted local decoders) use this extended context.
 M.context = context
 
 local function valid(ctx)
-    return generation == ctx.generation
-        and require("dap").session() == ctx.session
-        and (ctx.session.current_frame and ctx.session.current_frame.id) == ctx.frame_id
+    return generation == ctx.generation and ui_context.is_current(ctx)
 end
-
-M.is_current = valid
 
 function M.original_value(reference, fallback)
     local node = nodes[reference]
