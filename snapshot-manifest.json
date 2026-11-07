@@ -1,0 +1,105 @@
+{
+  "live_head_before": {
+    "CommitHash": "dm3o49uuo124ctrei03i2u4ha43e850d",
+    "CommitDate": "2026-11-07T07:46:53.578Z"
+  },
+  "live_head_after": {
+    "CommitHash": "dm3o49uuo124ctrei03i2u4ha43e850d",
+    "CommitDate": "2026-11-07T07:46:53.578Z"
+  },
+  "live_dolt_sha256": "198a6caabd5ad8fd57ac38d851a042a90d2e69b09a5d4528f46028c72dd0b17d",
+  "backup_sha256": "4d29c47f95463d7dc9682cdc936c86acc18efc0716b248d5ef16209671034afa",
+  "backup_state": {
+    "last_dolt_commit": "aqtomhq8v8g8bb7lb64ghl9mdaobdrqi",
+    "timestamp": "2026-11-07T07:46:23.973435176Z"
+  },
+  "issue_count": 50,
+  "memory_count": 1,
+  "statuses": {
+    "closed": 30,
+    "open": 19,
+    "in_progress": 1
+  },
+  "dv-8x5.9": {
+    "id": "dv-8x5.9",
+    "status": "in_progress",
+    "updated_at": "2026-11-07T07:46:54Z"
+  },
+  "live_dolt_files": {
+    "config.json": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/init.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/.dolt-gc-last": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/.dolt-gc.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/FETCH_HEAD": "1be2460aad0499bfeaf45b9bb883cc5d196a858d59b936c9a569a1c91568ae7a",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/HEAD": "f6f2b945f6c411b02ba3da9c7ace88dcf71b6af65ba2e0d89aa82900042b5a10",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/config": "624b78220b67a720577d35361a3eede98b1f3180cbaf36ecefee5f230fe91807",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/description": "85ab6c163d43a17ea9cf7788308bca1466f1b0a8d1cc92e26e9bf63da4062aee",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/hooks/applypatch-msg.sample": "0223497a0b8b033aa58a3a521b8629869386cf7ab0e2f101963d328aa62193f7",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/hooks/commit-msg.sample": "1f74d5e9292979b573ebd59741d46cb93ff391acdd083d340b94370753d92437",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/hooks/fsmonitor-watchman.sample": "e0549964e93897b519bd8e333c037e51fff0f88ba13e086a331592bf801fa1d0",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/hooks/post-update.sample": "81765af2daef323061dcbc5e61fc16481cb74b3bac9ad8a174b186523586f6c5",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/hooks/pre-applypatch.sample": "e15c5b469ea3e0a695bea6f2c82bcf8e62821074939ddd85b77e0007ff165475",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/hooks/pre-commit.sample": "f9af7d95eb1231ecf2eba9770fedfa8d4797a12b02d7240e98d568201251244a",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/hooks/pre-merge-commit.sample": "d3825a70337940ebbd0a5c072984e13245920cdf8898bd225c8d27a6dfc9cb53",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/hooks/pre-push.sample": "ecce9c7e04d3f5dd9d8ada81753dd1d549a9634b26770042b58dda00217d086a",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/hooks/pre-rebase.sample": "4febce867790052338076f4e66cc47efb14879d18097d1d61c8261859eaaa7b3",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/hooks/pre-receive.sample": "a4c3d2b9c7bb3fd8d1441c31bd4ee71a595d66b44fcf49ddb310252320169989",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/hooks/prepare-commit-msg.sample": "e9ddcaa4189fddd25ed97fc8c789eca7b6ca16390b2392ae3276f0c8e1aa4619",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/hooks/push-to-checkout.sample": "a53d0741798b287c6dd7afa64aee473f305e65d3f49463bb9d7408ec3b12bf5f",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/hooks/sendemail-validate.sample": "44ebfc923dc5466bc009602f0ecf067b9c65459abfe8868ddc49b78e6ced7a92",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/hooks/update.sample": "8d5f2fa83e103cf08b57eaa67521df9194f45cbdbcb37da52ad586097a14d106",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/info/exclude": "6671fe83b7a07c8932ee89164d1f2793b2318058eb8b98dc5c06ee0a5a3b0ec1",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/info/refs": "fd0e8a944ca28036919964c5f82aada0154f5a2c3f2611da01b55d589b101847",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/objects/info/commit-graph": "aca0cfd558767ac64bb9dbe7633c797996e2aa8b7e45a0648d176ea385d62f56",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/objects/info/packs": "01ce1c52953140e2dc13278ec990f481aa8e97db2265daa0c27399642373a841",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/objects/pack/pack-4d0aa191384fec627d976d11924aa13d763acebe.bitmap": "4d0427f31677899564d33fd61005267a29e4a6236ceae865b992ba7314ddc061",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/objects/pack/pack-4d0aa191384fec627d976d11924aa13d763acebe.idx": "b45e3d23aa6d96a1f12dc595c0e45d49a70a2ebc33a9e4418b00c4db6fbdc593",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/objects/pack/pack-4d0aa191384fec627d976d11924aa13d763acebe.pack": "20fb6ea4c0473d245dfc6000039c6e5d5bdaf2a4a9f228b3e80f6394d97294d3",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/objects/pack/pack-4d0aa191384fec627d976d11924aa13d763acebe.rev": "7d3491783b996fcc134def0e46adecf8e789b704c8f4434603c5937cb703ffd4",
+    "git-remote-cache/448a44d96355eac29de950b5382da66c4e5701b6a9e33dbcfab020482018fa3c/repo.git/packed-refs": "6110899c7adc374885f9552bddfb76fa28a7f7ca3c05fb8b74471a457e1e57c8",
+    "noms/252jvu01b9ekq556tg062h258rk3n273": "98ae661e15aba72b46d807a6107ced2ed2cb0895f99ffc18feb6de75dbafd2cf",
+    "noms/LOCK": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "noms/a9eetbruhbn4aifd6f396041c5t7tvs2.darc": "34a018987745599a02937d7fd930505773fd05d273994238bb324db41a444d53",
+    "noms/bakcubdf60sgfnur15glg960fp80357n.darc": "03905c6c153237bfff06f9812b982b0b3e672b4ff3898012d20c10de76e45f74",
+    "noms/dj85g8r8lseq98ea3a1uqa2u425u14v0.darc": "beefdf85cef113682d2145e91403f748b3cc9c87171f31cdbd23c5e98a0d6994",
+    "noms/elgd00rohjalhdininun14f4v3h5d4k0": "b3efcdb9a0556c69834a9c04f003f09c05d1bede9329474de054be15f7783142",
+    "noms/f83terb3103qdoa6uhgt5bsv54vdc6c1.darc": "def9144abdc6447e04aab84a51e9b3d9fe7caad63482d466229a0122db50ace7",
+    "noms/fkms5fen5lhio8jfrrvl6doiermc964a": "9f07b74b49bd0a040edd97cf6c94605dcd834d112d67acfb93906bd3fd635606",
+    "noms/gggcbbvs1q1p78q6gnm441gsvof33lae": "f370606c5a2bebde67dcfcf98d5b2cb16678163555e7fd4fb31fd9cbe10e2a03",
+    "noms/journal.idx": "75160b4c1a3756fc1b1eae86a0ec884bc0d1eed318eb803361a3b460dbb7d02e",
+    "noms/jpea4kqkpd5qmed10fdjhbp2pq2bkucs": "66537c0d746f5c26e93cac15647d0840e032ade31b273ec4b240f558fc321b45",
+    "noms/l1n31edohq5lpdtnrm164u1u2792ipn3.darc": "aaf0d1f62d4ea26c7f26a65c10d5500e1806bb340133498a32f22435d7111268",
+    "noms/l9ra1qsetdc9q3j28gmi1a5pti1oktd7": "2e26a371324c6b8577b146c6019ec178f2a9d83ac2f3ee83753daf0dba9af08d",
+    "noms/manifest": "a196051b1e5b9b9efb8a17d5f01ba7ad4ceed3fccde3911f7088a94f9f8fe889",
+    "noms/n3qg66bg8e6ticrkfmff9jtfugb9vc29.darc": "1c42d9ee28da50981cf84fab1ad73e6bd54f7caa8475076b5275250e01d75311",
+    "noms/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv": "9c41b39ecc447c24488e9e383e5aa94a209212dd524b1fe7a1ad7ecb2f714e1f",
+    "repo_state.json": "a8ece760a6d533efd3784a65247c77e02285f3e1d38a812d328b84aa45ec274e",
+    "temptf/dolt_embedded_metrics": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "backup_files": {
+    "0brssnopdph0iu42p1puan2cr5qoue24.darc": "bafb8dde0dae1e7c00b11a619fdee0db85521ebe8334959dc4283680746e78c6",
+    "92a41he9nagvql0m3l0e02jost5ua1nc.darc": "b004f524e5e31850b5c8ec0803933c2232ce1283f8e684570c8e3581880af9be",
+    "98j0fb7dbvv4dplfk50424451kct6e61.darc": "5fd1efadca15edf4fcc7abd267f35a08f7fffc8fb6f0e546c13d92ed6efaa408",
+    "LOCK": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "backup_state.json": "d6f155c200bbe0e9e8d9ba667f740654e8d183e41daa68a333838780bcabc29b",
+    "gnklh4d1j0ao7euo2fjidofs38b7g65e.darc": "b5155e18efc1e38791630f805b4321101b7c144e467f9437719449ca2d256626",
+    "ha2eocn7lmv4lmqvm0o1q35tjjgb0df0.darc": "aa736f8d7d3cba42130a9b29f5d3a8c6103c53d2fbc3207abdc1a1bbb054020d",
+    "manifest": "43339bf6cef974de21007d981116995540b2584d569729810e3537d003d14e84",
+    "peubhvv3rp8jmvtvql6hie9poc2bbtdb.darc": "d2af32841599d5c9a45d62a1bd7144703d6c854aa1053342f7d5eff4c987a990",
+    "qtt36eb3cmo2pr2g335qo2mm75209eu2.darc": "1614a732afd7d1e08f957062e771af3fed1ab63f5b74bf27b4ea5d853d02df6f",
+    "tcqqiel6kd7gjpblhm0s8jte2e838sfe.darc": "8eba5dc89294333ae81f51a225b38b48313ed57a1c9062e4e2df01af62977910",
+    "tvb38n2r9i3f3it1roq099kfg7qpecvj.darc": "d70d133054851c19629bd37500e02cd96709a8e7aad0f641302c75b2a191495a",
+    "ugqgrbqnhggpl5eq0iht77eu1dpmmoos.darc": "73273d7ce372a59ebbf31eac86a2ec7a081c4bd0be137a863d741c26c8e8ad39",
+    "unhh2cinqd3qviva3ndr4ukti1i5gj0r.darc": "2650d9d378ef420d83604f9ee70f8cb18371aad6dbd07d1ab4287ee913311c82",
+    "v2daidgsiqd50s3ajjd90b6q63ssprlh.darc": "cd3e39428e20d9e46b50c120cbd160195e193aaaaf8fe679af7e3b781b7b8e59"
+  },
+  "source_git_state_before_and_after": {
+    "indexes": {
+      "/home/abhirupdas_sharechat_co/Codes/Personal/nvim-dap-view/.git/index": "5de28471d344feec1e62a470f7d05c6a28271176ae7068773094e9e532a30380",
+      "/home/abhirupdas_sharechat_co/Codes/Personal/nvim-dap-view/.git/worktrees/abhirup-stabilize-debugger/index": "7f9a438dfe55b3b7c80e21f70007fa25b737a26ef8991630449bb1737f71d40f",
+      "/home/abhirupdas_sharechat_co/Codes/Personal/nvim-dap-view/.git/worktrees/nvim-dap-view/index": "e46dc0039e2a7b3185fbc0ecab350b978b20e009e1ece7b794ed3003c3303316"
+    },
+    "status": " M .beads/.gitignore\n M .beads/README.md\n M .beads/config.yaml\n M .beads/hooks/post-checkout\n M .beads/hooks/post-merge\n M .beads/hooks/pre-commit\n M .beads/hooks/pre-push\n M .beads/hooks/prepare-commit-msg\n M .beads/issues.jsonl\n M .gitignore\n M lua/dap-view/scopes/actions.lua\n M lua/dap-view/scopes/keymaps.lua\n M lua/dap-view/views/set.lua\n M tests/harness.lua\n?? tests/cases/variable_edit_refresh.lua\n"
+  },
+  "credentials": "Only selected native DB, backup, metadata/config and exports; credential-like paths rejected; no .beads-credential-key included."
+}

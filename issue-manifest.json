@@ -1,0 +1,302 @@
+[
+  {
+    "id": "dv-0sj",
+    "title": "Detached REPL needs an input-forwarding design",
+    "status": "open",
+    "updated_at": "2026-10-05T04:50:18Z"
+  },
+  {
+    "id": "dv-1by",
+    "title": "No get_scopes tool: agents can only see the first scope of a frame",
+    "status": "open",
+    "updated_at": "2026-09-15T04:44:22Z"
+  },
+  {
+    "id": "dv-2gq",
+    "title": "Capture program output: agents cannot see what the debuggee printed",
+    "status": "open",
+    "updated_at": "2026-09-15T04:58:02Z"
+  },
+  {
+    "id": "dv-2ni",
+    "title": "Remove one-time agent documentation and redundant audit output",
+    "status": "closed",
+    "updated_at": "2026-11-07T03:46:16Z"
+  },
+  {
+    "id": "dv-42n",
+    "title": "Hover on a large value (matrix) stalls and never shows a float",
+    "status": "open",
+    "updated_at": "2026-11-07T02:57:13Z"
+  },
+  {
+    "id": "dv-6ji",
+    "title": "Richer MCP tooling",
+    "status": "open",
+    "updated_at": "2026-09-15T04:57:43Z"
+  },
+  {
+    "id": "dv-78r",
+    "title": "Audit tracked repository composition by file type",
+    "status": "closed",
+    "updated_at": "2026-11-07T04:12:21Z"
+  },
+  {
+    "id": "dv-79b",
+    "title": "Remove inherited documentation website and frontend assets",
+    "status": "closed",
+    "updated_at": "2026-11-07T04:23:27Z"
+  },
+  {
+    "id": "dv-8vz",
+    "title": "Move the ui_* tools out of the DAP MCP",
+    "status": "open",
+    "updated_at": "2026-09-15T04:58:19Z"
+  },
+  {
+    "id": "dv-8x5",
+    "title": "Simplify debugger and MCP maintenance after stabilization",
+    "status": "open",
+    "updated_at": "2026-11-07T03:39:55Z"
+  },
+  {
+    "id": "dv-8x5.1",
+    "title": "Make MCP paused reads coherent through the existing pause module",
+    "status": "open",
+    "updated_at": "2026-11-07T05:17:37Z"
+  },
+  {
+    "id": "dv-8x5.1.1",
+    "title": "Centralize existing MCP pause-read predicates without changing tool behavior",
+    "status": "closed",
+    "updated_at": "2026-11-07T05:30:23Z"
+  },
+  {
+    "id": "dv-8x5.2",
+    "title": "Move UI request ownership out of decoder presentation",
+    "status": "closed",
+    "updated_at": "2026-11-07T05:30:25Z"
+  },
+  {
+    "id": "dv-8x5.3",
+    "title": "Capture stable node targets for value actions",
+    "status": "open",
+    "updated_at": "2026-11-07T03:16:42Z"
+  },
+  {
+    "id": "dv-8x5.4",
+    "title": "Own deferred remote work by viewer lifetime",
+    "status": "open",
+    "updated_at": "2026-11-07T03:16:42Z"
+  },
+  {
+    "id": "dv-8x5.5",
+    "title": "Isolate run-to-line breakpoint restoration as one operation",
+    "status": "open",
+    "updated_at": "2026-11-07T03:16:43Z"
+  },
+  {
+    "id": "dv-8x5.6",
+    "title": "Decouple decoder completion from view refresh policy",
+    "status": "open",
+    "updated_at": "2026-11-07T03:16:44Z"
+  },
+  {
+    "id": "dv-8x5.7",
+    "title": "Localize session-tab serialization ownership and remove obsolete host capability",
+    "status": "open",
+    "updated_at": "2026-11-07T03:16:44Z"
+  },
+  {
+    "id": "dv-8x5.8",
+    "title": "Validate pause and UI-context refactors at 7f2b159 with stabilization regressions",
+    "status": "closed",
+    "updated_at": "2026-11-07T05:30:27Z"
+  },
+  {
+    "id": "dv-8x5.9",
+    "title": "Merge validated maintenance and clean superseded worktrees",
+    "status": "in_progress",
+    "updated_at": "2026-11-07T07:46:54Z"
+  },
+  {
+    "id": "dv-aaa",
+    "title": "No exception support: cannot arm exception breakpoints or read exception details",
+    "status": "open",
+    "updated_at": "2026-09-15T04:58:03Z"
+  },
+  {
+    "id": "dv-bwy",
+    "title": "Scopes tree: expansion leaves stale/closed folds in the dap-view window",
+    "status": "closed",
+    "updated_at": "2026-11-07T02:57:11Z"
+  },
+  {
+    "id": "dv-c0i",
+    "title": "Research debugger styling, Neovim theming and navigation conventions",
+    "status": "closed",
+    "updated_at": "2026-11-07T03:34:57Z"
+  },
+  {
+    "id": "dv-c5r",
+    "title": "Stabilize debugger, MCP and decoder integration on main",
+    "status": "closed",
+    "updated_at": "2026-11-07T03:30:47Z"
+  },
+  {
+    "id": "dv-c5r.1",
+    "title": "Session restore preserves user tab ownership",
+    "status": "closed",
+    "updated_at": "2026-11-07T02:57:10Z"
+  },
+  {
+    "id": "dv-c5r.10",
+    "title": "Wait snapshots and advertised stack frames must be usable",
+    "status": "closed",
+    "updated_at": "2026-11-07T03:19:32Z"
+  },
+  {
+    "id": "dv-c5r.11",
+    "title": "Restore run-to-line breakpoints after every session exit",
+    "status": "closed",
+    "updated_at": "2026-11-07T03:19:33Z"
+  },
+  {
+    "id": "dv-c5r.12",
+    "title": "Refresh visible scopes after external variable mutation",
+    "status": "closed",
+    "updated_at": "2026-11-07T03:19:33Z"
+  },
+  {
+    "id": "dv-c5r.13",
+    "title": "Fence hover and watch replies and repair child tooltip",
+    "status": "closed",
+    "updated_at": "2026-11-07T03:19:34Z"
+  },
+  {
+    "id": "dv-c5r.14",
+    "title": "Preserve ownership after tab reorder and fence queued remote keys",
+    "status": "closed",
+    "updated_at": "2026-11-07T03:19:35Z"
+  },
+  {
+    "id": "dv-c5r.15",
+    "title": "Fence JS mutation replies and reject MCP preview mutation",
+    "status": "closed",
+    "updated_at": "2026-11-07T03:19:35Z"
+  },
+  {
+    "id": "dv-c5r.16",
+    "title": "Preserve Statechart audit evidence in repository",
+    "status": "closed",
+    "updated_at": "2026-11-07T03:23:13Z"
+  },
+  {
+    "id": "dv-c5r.2",
+    "title": "Variable trees preserve correct hover, re-root and fold state",
+    "status": "closed",
+    "updated_at": "2026-11-07T02:57:11Z"
+  },
+  {
+    "id": "dv-c5r.3",
+    "title": "Remote viewer and MCP lifecycle survive startup and long waits",
+    "status": "closed",
+    "updated_at": "2026-11-07T02:40:01Z"
+  },
+  {
+    "id": "dv-c5r.4",
+    "title": "Recover and validate combined stabilization baseline",
+    "status": "closed",
+    "updated_at": "2026-11-07T03:30:46Z"
+  },
+  {
+    "id": "dv-c5r.5",
+    "title": "Bound all remote startup RPCs by the startup deadline",
+    "status": "closed",
+    "updated_at": "2026-11-07T02:57:12Z"
+  },
+  {
+    "id": "dv-c5r.6",
+    "title": "Preserve manual folds by their owning parent identity",
+    "status": "closed",
+    "updated_at": "2026-11-07T02:57:12Z"
+  },
+  {
+    "id": "dv-c5r.7",
+    "title": "Escape decoded synthetic node names before rendering",
+    "status": "closed",
+    "updated_at": "2026-11-07T02:57:13Z"
+  },
+  {
+    "id": "dv-c5r.8",
+    "title": "Adversarial runtime correctness across debugger and MCP",
+    "status": "closed",
+    "updated_at": "2026-11-07T03:19:36Z"
+  },
+  {
+    "id": "dv-c5r.9",
+    "title": "Statechart audit of debugger, rendering and MCP lifecycle invariants",
+    "status": "closed",
+    "updated_at": "2026-11-07T03:05:59Z"
+  },
+  {
+    "id": "dv-gw6",
+    "title": "Headless UI harness must return failure when assertions fail",
+    "status": "closed",
+    "updated_at": "2026-10-05T05:00:41Z"
+  },
+  {
+    "id": "dv-h9w",
+    "title": "Beads sync blocked by pending events despite clean bd commit",
+    "status": "open",
+    "updated_at": "2026-11-07T02:58:16Z"
+  },
+  {
+    "id": "dv-kux",
+    "title": "Hover in the dap-view window evaluates the word under the cursor, not the tree node",
+    "status": "closed",
+    "updated_at": "2026-09-15T04:16:44Z"
+  },
+  {
+    "id": "dv-kyf",
+    "title": "<leader>de hover float does not work in the user's Neovim",
+    "status": "closed",
+    "updated_at": "2026-09-15T04:32:13Z"
+  },
+  {
+    "id": "dv-n8p",
+    "title": "Set up Beads on the QA machine and recover existing project history",
+    "status": "closed",
+    "updated_at": "2026-10-05T04:52:44Z"
+  },
+  {
+    "id": "dv-otd",
+    "title": "restart_session: restarting means stop plus start today",
+    "status": "open",
+    "updated_at": "2026-09-15T04:58:19Z"
+  },
+  {
+    "id": "dv-oug",
+    "title": "Scopes remains stale after a successful variable edit",
+    "status": "closed",
+    "updated_at": "2026-10-05T05:00:40Z"
+  },
+  {
+    "id": "dv-qhl",
+    "title": "No goto / jump-to-line",
+    "status": "open",
+    "updated_at": "2026-09-15T04:58:34Z"
+  },
+  {
+    "id": "dv-rth",
+    "title": "Breakpoint kinds beyond file:line",
+    "status": "open",
+    "updated_at": "2026-09-15T04:58:34Z"
+  },
+  {
+    "id": "dv-xlb",
+    "title": "Delve adapter death can leave MCP wait timing out after ECONNRESET",
+    "status": "open",
+    "updated_at": "2026-11-07T05:30:22Z"
+  }
+]
