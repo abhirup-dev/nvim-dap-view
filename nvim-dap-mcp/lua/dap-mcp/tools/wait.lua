@@ -99,7 +99,9 @@ registry.register({
             local token = pause.token(session)
             -- event_stopped yields while nvim-dap fetches threads/stackTrace.
             -- Only compose after its selected frame belongs to the loaded stack.
-            local ready = false
+            -- Delve may allocate new IDs for get_stack; select_frame can select
+            -- one of those without replacing nvim-dap's original thread cache.
+            local ready = frame and pause.frame(session, thread_id, frame.id) == frame or false
             for _, candidate in ipairs(thread and thread.frames or {}) do
                 if
                     frame

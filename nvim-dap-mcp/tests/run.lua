@@ -483,6 +483,10 @@ local exact = run("select_frame", { frame_id = advertised[2].id })
 ok(exact.ok, "Delve-style newly allocated advertised frame is selectable")
 if exact.ok then
     eq(fake.frame_set.id, advertised[2].id, "selection uses the exact advertised ID")
+    fake.current_frame = fake.frame_set
+    local selected_pause = run("wait_for_pause", { timeout_ms = 50 })
+    ok(selected_pause.ok and not selected_pause.result.timed_out, "advertised selected frame remains a ready pause")
+    eq(selected_pause.result.frame and selected_pause.result.frame.id, advertised[2].id, "wait retains selected frame")
 end
 emit("before", "event_continued", fake)
 emit("before", "event_stopped", fake)
