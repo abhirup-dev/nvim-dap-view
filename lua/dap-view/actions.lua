@@ -97,8 +97,16 @@ local function get_hover_expr(expr)
 
     if in_variables_tree then
         local line = api.nvim_win_get_cursor(state.winnr)[1]
-        local path = state.line_to_variable_path[line]
+        if state.current_section == "watches" then
+            local expression = state.expression_views_by_line[line]
+            if expression then
+                return expression.expression
+            end
+            local variable = state.variable_views_by_line[line]
+            return variable and variable.view.variable.evaluateName
+        end
 
+        local path = state.line_to_variable_path[line]
         return path and state.variable_path_to_evaluate_name[path]
     end
 
