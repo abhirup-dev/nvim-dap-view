@@ -50,14 +50,14 @@ fake.request = function(_, command, _, callback)
     return nil, response
 end
 H.install_session(fake)
-local function updates()
+local function updates(group)
     local paths = {}
     for _, mark in
         ipairs(
             vim.api.nvim_buf_get_extmarks(state.bufnr, require("dap-view.globals").NAMESPACE, 0, -1, { details = true })
         )
     do
-        if mark[4].hl_group == "NvimDapViewWatchUpdated" then
+        if mark[4].hl_group == (group or "NvimDapViewWatchUpdated") then
             local line = mark[2] + 1
             local path = state.line_to_variable_path[line]
             if state.current_section == "watches" then
@@ -93,6 +93,7 @@ H.eq(updates(), {}, "unchanged stop has no scopes update markers")
 count = 2
 stop("scopes")
 H.eq(updates(), { ["Locals.count"] = true }, "only changed native variable is marked after decoder redraws")
+H.eq(updates("NvimDapViewWatchUpdatedName"), { ["Locals.count"] = true }, "changed variable name is marked too")
 render("scopes")
 H.eq(updates(), { ["Locals.count"] = true }, "redraw retains native change marker for this stop")
 age = 38
@@ -114,6 +115,7 @@ H.eq(updates(), {}, "unchanged watch evaluation is not marked")
 age = 39
 stop("watches")
 H.ok(updates()["payload.decoded.age"], "changed decoded watch child is marked")
+H.ok(updates("NvimDapViewWatchUpdatedName")["payload.decoded.age"], "changed watch child name is marked too")
 H.ok(not updates()["payload.decoded.name"], "unchanged decoded watch child keeps ordinary color")
 coroutine.wrap(function()
     require("dap-view.watches.eval").evaluate_expression("payload", true)

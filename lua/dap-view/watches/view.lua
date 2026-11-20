@@ -50,7 +50,7 @@ local function show_variables(children, reference, line, depth, parent_highlight
 
         local hl_start = depth + #prefix
         hl.hl_range(
-            variable_highlight or "WatchExpr",
+            (child.updated and "WatchUpdatedName") or variable_highlight or "WatchExpr",
             { line, variable_highlight and depth or hl_start },
             { line, hl_start + #variable.name }
         )
@@ -168,7 +168,7 @@ M.show = function()
             util.set_lines(state.bufnr, line, line, true, { content })
 
             hl.hl_range(
-                variable_highlight or "WatchExpr",
+                (not err and view.updated and "WatchUpdatedName") or variable_highlight or "WatchExpr",
                 { line, variable_highlight and 0 or #prefix },
                 { line, #prefix + #expression }
             )
