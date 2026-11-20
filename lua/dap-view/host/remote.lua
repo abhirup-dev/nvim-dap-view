@@ -311,6 +311,8 @@ local attach_viewer = function(deadline)
         error("The remote viewer did not become ready within the startup timeout", 0)
     end
     local tree = setup.config.tree
+    local mirror = setup.config.host.remote.mirror_highlights
+    local themed = require("dap-view.highlight").themed()
 
     local result = startup_request("attach", {
         {
@@ -320,7 +322,8 @@ local attach_viewer = function(deadline)
             fold = tree.fold,
             fold_level = tree.fold_level,
             background = vim.o.background,
-            highlights = setup.config.host.remote.mirror_highlights and highlights() or nil,
+            highlights = mirror and highlights() or nil,
+            panel = mirror and themed and require("dap-view.views.options").PANEL_WINHIGHLIGHT or nil,
         },
     }, deadline)
 

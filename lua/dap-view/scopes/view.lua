@@ -166,7 +166,7 @@ local function show_variables(variables_reference, parent_path, line, depth, can
         ---@type [string, [integer,integer], [integer,integer], integer?, vim.hl.range.Opts?][]
         local line_highlights = {
             {
-                variable_highlight or "WatchExpr",
+                (updated and "WatchUpdatedName") or variable_highlight or "WatchExpr",
                 { line, variable_highlight and indent or hl_start },
                 { line, hl_start + #variable.name },
             },
@@ -295,7 +295,7 @@ M.show = function()
         if render.root_path then
             -- Placeholder: the breadcrumb is only known once the traversal reached the root
             canvas.contents[1] = ""
-            canvas.highlights[1] = { { "Thread", { 0, 0 }, { 0, -1 } } }
+            canvas.highlights[1] = { { "SectionHeader", { 0, 0 }, { 0, -1 } } }
 
             line = 1
         end
@@ -313,7 +313,7 @@ M.show = function()
             else
                 canvas.contents[#canvas.contents + 1] = scope.name
 
-                canvas.highlights[#canvas.highlights + 1] = { { "Thread", { line, 0 }, { line, -1 } } }
+                canvas.highlights[#canvas.highlights + 1] = { { "SectionHeader", { line, 0 }, { line, -1 } } }
 
                 line = line + 1
 

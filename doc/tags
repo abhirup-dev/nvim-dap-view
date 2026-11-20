@@ -12,4 +12,12 @@ dap-view-highlight-groups	dap-view.txt	/*dap-view-highlight-groups*
 dap-view-keymaps	dap-view.txt	/*dap-view-keymaps*
 dap-view-restoring-sessions	dap-view.txt	/*dap-view-restoring-sessions*
 dap-view-switchbuf	dap-view.txt	/*dap-view-switchbuf*
+dap-view-themes	dap-view.txt	/*dap-view-themes*
+dap-view-themes-match	dap-view.txt	/*dap-view-themes-match*
+dap-view-themes-order	dap-view.txt	/*dap-view-themes-order*
+dap-view-themes-overrides	dap-view.txt	/*dap-view-themes-overrides*
+dap-view-themes-provider	dap-view.txt	/*dap-view-themes-provider*
+dap-view-themes-roles	dap-view.txt	/*dap-view-themes-roles*
+dap-view-themes-transparent	dap-view.txt	/*dap-view-themes-transparent*
+dap-view-variable-presentation	dap-view.txt	/*dap-view-variable-presentation*
 dap-view.txt	dap-view.txt	/*dap-view.txt*

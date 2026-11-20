@@ -117,6 +117,17 @@ H.ok(lines():find('city = "Kolkata"', 1, true), "nested decoded field")
 H.ok(lines():find('2 = "b"', 1, true), "repeated decoded field")
 H.ok(lines():find("raw = ", 1, true), "raw sibling available")
 assert_scalar_colors(state.bufnr, "scopes")
+local function node_group(name)
+    local ns = require("dap-view.globals").NAMESPACE
+    local contents = vim.api.nvim_buf_get_lines(state.bufnr, 0, -1, false)
+    for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(state.bufnr, ns, 0, -1, { details = true })) do
+        if (contents[mark[2] + 1] or ""):match("^%s*%S*%s*" .. name .. " = ") then
+            return mark[4].hl_group
+        end
+    end
+end
+H.eq(node_group("raw"), "NvimDapViewRaw", "raw node uses the Raw highlight")
+H.eq(node_group("decoded"), "NvimDapViewDecoded", "decoded node uses the Decoded highlight")
 H.eq(calls, 1, "cached between renders")
 -- A real second Neovim mirrors rendered text and forwards keypresses to the owner.
 local remote_config = require("dap-view.setup").config.host.remote

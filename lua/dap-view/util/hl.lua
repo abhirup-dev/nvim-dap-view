@@ -63,9 +63,16 @@ M.variable_highlight = function(variable, context)
             return highlight
         end
     end
+    if variable._decoder_role then
+        return variable._decoder_role
+    end
     local hint = variable.presentationHint
     if hint and (hint.kind == "virtual" or hint.visibility == "internal") then
         return "VariableInternal"
+    end
+    -- A raw subtree stays muted, but decoded children keep their type colors
+    if context.parent_highlight == "Decoded" then
+        return nil
     end
     return context.parent_highlight
 end

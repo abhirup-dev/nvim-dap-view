@@ -236,6 +236,12 @@ local function raw_node(var, name)
     return v
 end
 
+---Mark the `raw`/`decoded` pair of a decoded value for `util.hl.variable_highlight`
+local function role(var, name)
+    var._decoder_role = name
+    return var
+end
+
 local function synthetic(var, depth)
     depth = depth or 0
     assert(depth < 64 and type(var) == "table" and type(var.name) == "string", "invalid decoded tree")
@@ -555,12 +561,12 @@ function M.resolve_children(var, path, ctx)
                         if result._children then
                             decoded.variablesReference = ref({ children = result._children })
                         end
-                        node.children = { raw_node(node.raw, "raw"), decoded }
+                        node.children = { role(raw_node(node.raw, "raw"), "Raw"), role(decoded, "Decoded") }
                         node.value = result.value or node.value
                     end)
                     if not ok then
                         node.children = {
-                            raw_node(node.raw, "raw"),
+                            role(raw_node(node.raw, "raw"), "Raw"),
                             synthetic({ name = "decode error", value = tostring(failure) }),
                         }
                         node.value = node.raw.value .. " [decode failed]"
@@ -575,8 +581,10 @@ function M.resolve_children(var, path, ctx)
         end
         return nil,
             {
-                variables = node.children
-                    or { raw_node(node.raw, "raw"), synthetic({ name = "decoded", value = "Loading…" }) },
+                variables = node.children or {
+                    role(raw_node(node.raw, "raw"), "Raw"),
+                    role(synthetic({ name = "decoded", value = "Loading…" }), "Decoded"),
+                },
             }
     end
     if reference == 0 then
