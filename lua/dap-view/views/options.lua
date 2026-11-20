@@ -3,6 +3,38 @@ local setup = require("dap-view.setup")
 
 local M = {}
 
+M.PANEL_WINHIGHLIGHT = {
+    Normal = "NvimDapViewPanel",
+    NormalNC = "NvimDapViewPanel",
+    EndOfBuffer = "NvimDapViewPanel",
+    WinBar = "NvimDapViewTabFill",
+    WinBarNC = "NvimDapViewTabFill",
+}
+
+---Draw the window on the panel surface without clobbering mappings the user already made,
+---and hide the `~` past the end of the buffer
+---@param winnr integer
+M.apply_panel = function(winnr)
+    local win = vim.wo[winnr]
+    local entries = vim.split(win.winhighlight, ",", { trimempty = true })
+    local mapped = {}
+    for _, entry in ipairs(entries) do
+        mapped[entry:match("^([^:]+):") or entry] = true
+    end
+    for from, to in vim.spairs(M.PANEL_WINHIGHLIGHT) do
+        if not mapped[from] then
+            entries[#entries + 1] = from .. ":" .. to
+        end
+    end
+    vim.wo[winnr][0].winhighlight = table.concat(entries, ",")
+
+    -- 'fillchars' is global-local: extend the effective value so the user's other fill chars survive
+    local fillchars = win.fillchars
+    if not fillchars:find("eob:") then
+        vim.wo[winnr][0].fillchars = fillchars == "" and "eob: " or fillchars .. ",eob: "
+    end
+end
+
 M.set_options = function()
     local win = vim.wo[state.winnr][0]
     win.scrolloff = 99
@@ -23,6 +55,10 @@ M.set_options = function()
         win.winfixheight = true
     else
         win.winfixwidth = true
+    end
+
+    if require("dap-view.highlight").themed() then
+        M.apply_panel(state.winnr)
     end
 
     local buf = vim.bo[state.bufnr]

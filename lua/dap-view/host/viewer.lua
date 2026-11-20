@@ -88,6 +88,7 @@ end
 ---@field winbar string?
 ---@field background string?
 ---@field highlights table<string, vim.api.keyset.highlight>?
+---@field panel table<string, string>? `winhighlight` mappings onto the owner's panel surface
 
 ---@type integer? RPC channel back to the owner, resolved on `attach`
 local owner
@@ -237,6 +238,15 @@ M.attach = function(opts)
     end
 
     apply_highlights(opts.highlights)
+
+    if opts.panel then
+        local mappings = {}
+        for from, to in vim.spairs(opts.panel) do
+            mappings[#mappings + 1] = from .. ":" .. to
+        end
+        vim.wo[win][0].winhighlight = table.concat(mappings, ",")
+        vim.wo[win][0].fillchars = "eob: "
+    end
 
     if opts.tabstop then
         vim.bo[buf].vartabstop = ""
