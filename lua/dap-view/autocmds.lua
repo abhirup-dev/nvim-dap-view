@@ -68,6 +68,15 @@ api.nvim_create_autocmd({ "WinResized", "BufWinEnter" }, {
     end,
 })
 
+-- Sections like the REPL swap buffers into the window, which resets its local options
+api.nvim_create_autocmd("BufWinEnter", {
+    callback = function()
+        if api.nvim_get_current_win() == state.winnr and require("dap-view.highlight").themed() then
+            require("dap-view.views.options").apply_panel(state.winnr)
+        end
+    end,
+})
+
 api.nvim_create_autocmd({ "WinClosed", "WinNew" }, {
     callback = function()
         vim.schedule(function()

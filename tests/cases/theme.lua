@@ -89,6 +89,13 @@ local winhighlight = vim.wo[state.winnr].winhighlight
 H.ok(winhighlight:find("Normal:NvimDapViewPanel", 1, true), "window maps Normal to the panel", winhighlight)
 H.ok(winhighlight:find("WinBar:NvimDapViewTabFill", 1, true), "winbar sits on the panel", winhighlight)
 H.ok(vim.wo[state.winnr].fillchars:find("eob: ", 1, true), "end-of-buffer filler is hidden")
+require("dap-view").show_view("repl")
+H.pump(60)
+winhighlight = vim.wo[state.winnr].winhighlight
+H.ok(winhighlight:find("Normal:NvimDapViewPanel", 1, true), "panel survives the REPL buffer swap", winhighlight)
+H.ok(vim.wo[state.winnr].fillchars:find("eob: ", 1, true), "hidden filler survives the REPL buffer swap")
+require("dap-view").show_view("scopes")
+H.pump(60)
 
 local scratch = vim.api.nvim_open_win(vim.api.nvim_create_buf(false, true), false, { split = "below" })
 vim.wo[scratch][0].winhighlight = "Normal:MyPanel"
@@ -133,6 +140,26 @@ require("dap-view").setup({
     end,
 })
 H.eq(get("WatchError").fg, 0xaa0000, "a function provider supplies roles")
+
+local notified = {}
+local notify = vim.notify
+vim.notify = function(message)
+    notified[#notified + 1] = message
+end
+require("dap-view").setup({
+    theme = function()
+        return { error = "Red", warn = "not-a-color", accent = { "#123456" }, bogus = "#ffffff" }
+    end,
+})
+vim.notify = notify
+H.eq(get("WatchError").fg, 0xff0000, "named colors are accepted")
+H.eq(get("ThreadStopped").fg, hex(themes.auto(themes.context(false)).warn), "an invalid color keeps the auto value")
+H.eq(#notified, 3, "invalid colors and unknown roles are reported", vim.inspect(notified))
+require("dap-view").setup({
+    theme = function()
+        return { error = "#aa0000" }
+    end,
+})
 
 H.group("colorscheme-defined groups win")
 local dir = vim.fn.tempname()
