@@ -595,7 +595,9 @@ The `theme` option selects where the roles come from:
                                                        *dap-view-themes-roles*
 Roles ~
 
-Every role is a color, `"#rrggbb"` or a 24-bit integer, except `selected`.
+Every role is a color, except `selected` which is `{ fg, bg }`. A color is
+`"#rrggbb"`, a 24-bit integer or a name known to |nvim_get_color_by_name()|.
+Invalid values and unknown roles are reported once and keep the `auto` value.
 
 Role          Used for                                  `auto` derives from
 `fg`          variable names, panel text                Normal.fg

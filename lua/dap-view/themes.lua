@@ -4,7 +4,7 @@ local api = vim.api
 
 local M = {}
 
----@alias dapview.Color string|integer `"#rrggbb"` or a 24-bit integer
+---@alias dapview.Color string|integer `"#rrggbb"`, a color name or a 24-bit integer
 
 ---@class dapview.ThemeRoles
 ---@field fg? dapview.Color Default text
@@ -232,6 +232,59 @@ end
 
 local warned = {}
 
+---@param message string
+local warn_once = function(message)
+    if not warned[message] then
+        warned[message] = true
+        vim.notify("nvim-dap-view: " .. message, vim.log.levels.WARN)
+    end
+end
+
+---@param color any
+---@return string? hex `nil` when `color` is not a color name, `"#rrggbb"` or a 24-bit integer
+local normalize = function(color)
+    if type(color) == "number" then
+        return color >= 0 and color <= 0xffffff and color % 1 == 0 and to_hex(color) or nil
+    end
+    if type(color) == "string" then
+        local value = api.nvim_get_color_by_name(color)
+        return value ~= -1 and to_hex(value) or nil
+    end
+end
+
+---Roles come from user config and third-party providers: an invalid value keeps the current one
+---@param roles dapview.ThemeRoles
+---@param layer table
+---@param source string
+local merge = function(roles, layer, source)
+    for role, value in pairs(layer) do
+        local current = roles[role]
+        if current == nil then
+            warn_once(("%s: unknown theme role '%s'"):format(source, tostring(role)))
+        elseif role == "selected" and type(value) == "table" then
+            for _, key in ipairs({ "fg", "bg" }) do
+                if value[key] ~= nil then
+                    local color = normalize(value[key])
+                    if color then
+                        current[key] = color
+                    else
+                        warn_once(
+                            ("%s: invalid color for selected.%s: %s"):format(source, key, vim.inspect(value[key]))
+                        )
+                    end
+                end
+            end
+        else
+            local color = role ~= "selected" and normalize(value)
+            if color then
+                roles[role] = color
+            else
+                warn_once(("%s: invalid color for %s: %s"):format(source, role, vim.inspect(value)))
+            end
+        end
+    end
+end
+
 ---Roles for the configured theme: auto, then the provider, then the overrides for the active colorscheme
 ---@param config dapview.ConfigStrict
 ---@param ctx dapview.ThemeContext
@@ -243,24 +296,23 @@ M.resolve = function(config, ctx)
     if type(provider) == "string" and provider ~= "auto" then
         local name = provider
         provider = providers[name]
-        if not provider and not warned[name] then
-            warned[name] = true
-            vim.notify("nvim-dap-view: unknown theme '" .. name .. "', using 'auto'", vim.log.levels.WARN)
+        if not provider then
+            warn_once("unknown theme '" .. name .. "', using 'auto'")
         end
     end
 
     if type(provider) == "function" then
         local ok, result = pcall(provider, ctx)
         if ok and type(result) == "table" then
-            roles = vim.tbl_deep_extend("force", roles, result)
+            merge(roles, result, "theme")
         else
-            vim.notify("nvim-dap-view: theme provider failed: " .. tostring(result), vim.log.levels.ERROR)
+            warn_once("theme provider failed: " .. tostring(result))
         end
     end
 
     local overrides = ctx.colors_name and (config.theme_overrides or {})[ctx.colors_name]
     if overrides then
-        roles = vim.tbl_deep_extend("force", roles, overrides)
+        merge(roles, overrides, "theme_overrides." .. ctx.colors_name)
     end
 
     return roles
