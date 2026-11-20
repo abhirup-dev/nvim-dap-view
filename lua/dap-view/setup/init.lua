@@ -8,6 +8,7 @@ M.setup = function(config)
 
     require("dap-view.setup.validate").validate(M.config)
     require("dap-view.decoders").setup(M.config.decoders)
+    require("dap-view.highlight").apply()
 end
 
 return M

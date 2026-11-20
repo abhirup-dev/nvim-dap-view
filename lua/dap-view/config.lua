@@ -224,6 +224,9 @@ local M = {}
 ---@field follow_tab boolean|fun(adapter?: string): boolean Reopen dapview when switching tabs
 ---@field host dapview.HostConfig Where the dap-view window lives
 ---@field tree dapview.TreeConfig Variable tree readability
+---@field theme "auto"|"links"|string|dapview.ThemeProvider Where highlight colors come from, see `:h dap-view-themes`
+---@field theme_overrides table<string, dapview.ThemeRoles> Role overrides keyed by `vim.g.colors_name`
+---@field transparent boolean|"auto" Draw surfaces without a background. `"auto"` follows `Normal`
 
 ---@type dapview.ConfigStrict
 M.config = {
@@ -393,6 +396,9 @@ M.config = {
     },
     switchbuf = "usetab,uselast",
     auto_toggle = false,
+    theme = "auto",
+    theme_overrides = {},
+    transparent = "auto",
     follow_tab = false,
     host = {
         default = "split",

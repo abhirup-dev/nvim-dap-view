@@ -17,6 +17,9 @@ function M.validate(config)
         host = { config.host, "table" },
         tree = { config.tree, "table" },
         decoders = { config.decoders, "table", true },
+        theme = { config.theme, { "string", "function" } },
+        theme_overrides = { config.theme_overrides, "table" },
+        transparent = { config.transparent, { "boolean", "string" } },
     }, config)
 
     if
@@ -24,6 +27,16 @@ function M.validate(config)
         and not vim.tbl_contains({ "keep_terminal", "open_term", "open" }, config.auto_toggle)
     then
         error("Unknown auto_toggle option: " .. config.auto_toggle)
+    end
+
+    if type(config.transparent) == "string" and config.transparent ~= "auto" then
+        error("Unknown transparent option: " .. config.transparent)
+    end
+
+    for colors_name, roles in pairs(config.theme_overrides) do
+        if type(roles) ~= "table" then
+            error("theme_overrides." .. tostring(colors_name) .. ": expected a table of roles")
+        end
     end
 
     require("dap-view.setup.validate.winbar").validate(config.winbar)
