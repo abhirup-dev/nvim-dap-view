@@ -297,6 +297,13 @@ You don't have to copy and paste these options. Use them as a reference.
         -- Can also be a function to dynamically choose when to follow, by returning a boolean
         -- If a function, receives the name of the adapter for the current session as an argument
         follow_tab = false,
+        -- Where highlight colors come from: "auto", "links", a registered theme
+        -- name or a function. See |dap-view-themes|
+        theme = "auto",
+        -- Role overrides keyed by `vim.g.colors_name`, e.g. { jb = { accent = "#56a8f5" } }
+        theme_overrides = {},
+        -- Draw surfaces without a background. "auto" follows whether `Normal` has one
+        transparent = "auto",
     }
 ==============================================================================
 KEYMAPS                                                     *dap-view-keymaps*
@@ -530,7 +537,8 @@ use `NvimDapViewVariableInternal` (linked to Comment). Expanded descendants
 inherit this styling. Values that change still use the update highlight.
 Set this option to false to disable the styling.
 
-Changed values use NvimDapViewWatchUpdated in scopes and watches. Comparisons
+Changed values use NvimDapViewWatchUpdated in scopes and watches, and their
+names use NvimDapViewWatchUpdatedName. Comparisons
 use the previous refresh generation in the same session, thread and frame;
 decoder completion and redraws retain the marker. The next stop or refresh
 clears it if the value is unchanged. Frames are matched by source path,
@@ -565,10 +573,150 @@ This fallback is adapter-specific, not language-independent detection. It
 does not change the adapter's data, hide nodes or prevent expanding them.
 
 ==============================================================================
+THEMES                                                       *dap-view-themes*
+
+nvim-dap-view colors its UI from a small set of semantic roles. A theme only
+defines roles; the plugin maps them onto every `NvimDapView*` group (tabs,
+winbar fill, controls, threads and frames, watches, variable names and
+values, virtual text). Groups are re-derived on |ColorScheme|.
+
+The `theme` option selects where the roles come from:
+
+- `"auto"` (default): derived from the active colorscheme's standard groups.
+  Nothing to configure; dap-view follows whatever colorscheme is loaded.
+- `"links"`: the classic behaviour, every group linked to a stock group
+  (see |dap-view-highlight-groups|). No window highlight changes.
+- a name registered with `require("dap-view.themes").register()`.
+- a function `fun(ctx): roles`, see |dap-view-themes-provider|.
+
+`auto` uses GUI colors, so without 'termguicolors' every theme behaves like
+`"links"`.
+
+                                                       *dap-view-themes-roles*
+Roles ~
+
+Every role is a color, `"#rrggbb"` or a 24-bit integer, except `selected`.
+
+Role          Used for                                  `auto` derives from
+`fg`          variable names, panel text                Normal.fg
+`muted`       separators, inactive controls, tabs,      Comment, NonText
+              truncation, internal variables
+`panel`       window, winbar and control surface        StatusLine, Pmenu,
+                                                        NormalFloat bg
+`selection`   current frame background                  Visual, PmenuSel,
+                                                        CursorLine bg
+`accent`      step controls, threads, file names        Function, Identifier
+`selected`    `{ fg, bg }` of the selected tab          TabLineSel, PmenuSel,
+                                                        Visual
+`ok`          play control, enabled filters             DiagnosticOk, String
+`warn`        pause control, stopped thread             DiagnosticWarn
+`error`       terminate/disconnect, errors              DiagnosticError, Error
+`changed`     changed variable name and value           `warn`
+`raw`         `raw` node of a decoded value             `muted`
+`decoded`     `decoded` node of a decoded value         `accent`
+`header`      scope headers                             `fg`
+`string`      value types                               String
+`number`                                                Number
+`float`                                                 Float
+`boolean`                                               Boolean
+`constant`                                              Constant
+`function`                                              Function
+
+`panel` candidates are skipped when they are far from `Normal`'s background
+(an inverted status line) or would make `fg` hard to read; the last resort is
+a slight blend of `Normal`. `selected` takes fg and bg from the same group.
+
+Only fg, bg and bold are used, so roles read the same in every terminal.
+
+                                                    *dap-view-themes-provider*
+Writing a provider ~
+
+A provider receives a context and returns a partial role table. Missing roles
+fall back to `auto`.
+    >lua
+    ---@param ctx dapview.ThemeContext
+    local provider = function(ctx)
+        -- ctx.background     "dark" or "light"
+        -- ctx.colors_name    vim.g.colors_name
+        -- ctx.transparent    whether surfaces will be drawn without a background
+        -- ctx.get(group)     { fg = "#rrggbb"?, bg = "#rrggbb"?, bold = boolean? },
+        --                    links followed and `reverse` applied
+        return {
+            accent = ctx.get("Special").fg,
+            selected = { fg = ctx.get("Normal").fg, bg = ctx.get("CursorLine").bg },
+        }
+    end
+
+    -- Use it directly
+    require("dap-view").setup({ theme = provider })
+
+    -- Or register it, so other plugins and colorschemes can ship one
+    require("dap-view.themes").register("mine", provider)
+    require("dap-view").setup({ theme = "mine" })
+<
+`require("dap-view.themes")` also has `get(name)` and `list()`. A theme can be
+registered after `setup()`; an unknown name warns and uses `auto`.
+
+                                                   *dap-view-themes-overrides*
+Overrides ~
+
+`theme_overrides` tweaks roles for one colorscheme, keyed by
+`vim.g.colors_name`, on top of the provider:
+    >lua
+    require("dap-view").setup({
+        theme_overrides = {
+            jb = { accent = "#56a8f5" },
+            habamax = { selected = { bg = "#5f5f87" } },
+        },
+    })
+<
+Overrides do not apply to the `"links"` theme.
+
+                                                       *dap-view-themes-order*
+Precedence ~
+
+1. A `NvimDapView*` group set by you (|nvim_set_hl()|, e.g. in a
+   |ColorScheme| autocmd) or by the colorscheme itself always wins.
+2. `theme_overrides` for the active colorscheme.
+3. The provider (`theme` name or function).
+4. `auto`.
+
+dap-view only rewrites groups that still hold what it last wrote. After a
+|:colorscheme| that runs `:highlight clear`, a group you set once (outside an
+autocmd) is cleared and themed again, like any other highlight.
+
+                                                 *dap-view-themes-transparent*
+Transparency ~
+
+`transparent = "auto"` (default) detects a transparent colorscheme: when
+`Normal` has no background, the panel, winbar fill, unselected tabs and
+controls get no background either. The selected tab keeps its chip. `true`
+forces this, `false` keeps the `panel` surface.
+
+The dap-view window maps `Normal`, `NormalNC` and `EndOfBuffer` to
+`NvimDapViewPanel` and `WinBar`/`WinBarNC` to `NvimDapViewTabFill` through
+'winhighlight', and hides the `~` filler with 'fillchars' `eob: `. Entries
+you already set in 'winhighlight' are kept. The `"links"` theme leaves both
+options alone.
+
+                                                     *dap-view-themes-match*
+Match your colorscheme ~
+
+With `theme = "auto"` there is nothing to do: switch colorschemes and
+dap-view follows. For example, jb.nvim (Islands) gives a tool-window surface
+from its StatusLine, its blue selected tab and its syntax colors, with no
+per-user theme file; `transparent = true` in jb.nvim is detected as well.
+
+If one color is off, override just that role for that colorscheme with
+`theme_overrides`. If you maintain a colorscheme, either define the
+`NvimDapView*` groups you care about (they win) or register a provider.
+
+==============================================================================
 HIGHLIGHT GROUPS                                   *dap-view-highlight-groups*
 
-nvim-dap-view defines highlight groups linked to
-(somewhat) reasonable defaults.
+With `theme = "links"`, nvim-dap-view links its highlight groups to
+(somewhat) reasonable defaults. Other themes define the same groups from
+roles, see |dap-view-themes|.
 
 Highlight Group                       Default Link
 
@@ -584,6 +732,7 @@ Highlight Group                       Default Link
 `NvimDapViewControlStepOut`           Function
 `NvimDapViewControlStepOver`          Function
 `NvimDapViewControlTerminate`         DapBreakpoint
+`NvimDapViewDecoded`                  Function
 `NvimDapViewExceptionFilterDisabled`  DiagnosticError
 `NvimDapViewExceptionFilterEnabled`   DiagnosticOk
 `NvimDapViewFileName`                 qfFileName
@@ -593,6 +742,9 @@ Highlight Group                       Default Link
 `NvimDapViewLineNumber`               qfLineNr
 `NvimDapViewMissingData`              DapBreakpoint
 `NvimDapViewNumber`                   Number
+`NvimDapViewPanel`                    Normal
+`NvimDapViewRaw`                      Comment
+`NvimDapViewSectionHeader`            NvimDapViewThread
 `NvimDapViewSeparator`                Comment
 `NvimDapViewString`                   String
 `NvimDapViewTabFill`                  TabLineFill
@@ -606,6 +758,7 @@ Highlight Group                       Default Link
 `NvimDapViewWatchError`               DiagnosticError
 `NvimDapViewWatchExpr`                Identifier
 `NvimDapViewWatchUpdated`             DiagnosticVirtualTextWarn
+`NvimDapViewWatchUpdatedName`         DiagnosticWarn
 `NvimDapViewVariableInternal`         Comment
 
 For neovim 0.12+, `Boolean`, `Constant`, `Float`, `Function`, `Number` and
@@ -613,6 +766,11 @@ For neovim 0.12+, `Boolean`, `Constant`, `Float`, `Function`, `Number` and
 there's `NvimDapViewVirtualText` (the "fallback", linked to `NonText`) and
 `NvimDapViewVirtualTextUpdated` (linked to `NvimDapViewWatchUpdated`, but
 dimmed as well).
+
+`NvimDapViewSectionHeader` styles scope headers, `NvimDapViewRaw` and
+`NvimDapViewDecoded` the `raw`/`decoded` nodes of a decoded value (decoded
+children keep their type colors), `NvimDapViewPanel` the dap-view window
+surface and `NvimDapViewWatchUpdatedName` the name of a changed variable.
 
 ==============================================================================
 CONTROL BAR                                             *dap-view-control-bar*

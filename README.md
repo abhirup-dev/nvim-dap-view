@@ -31,6 +31,27 @@ Configuration and commands are documented in `:help dap-view.txt`.
 - [Custom value decoders, protobuf examples and RPC profile registration](docs/value-decoders.md).
 - [Retained Statechart findings and models](docs/audits/statechart/2026-11-07/README.md).
 
+## Theme
+
+dap-view derives its colors from the active colorscheme (`theme = "auto"`), so
+it looks native in jb.nvim, tokyonight, habamax and the rest with no theme file.
+Transparent colorschemes are detected. Tweak or replace the roles:
+
+```lua
+require("dap-view").setup({
+  theme = "auto", -- or "links" (classic stock links), a registered name, or function(ctx) return roles end
+  theme_overrides = { jb = { accent = "#56a8f5" } }, -- keyed by vim.g.colors_name
+  transparent = "auto", -- true | false
+})
+
+require("dap-view.themes").register("mine", function(ctx)
+  return { accent = ctx.get("Special").fg } -- missing roles fall back to auto
+end)
+```
+
+Your own `nvim_set_hl` on `NvimDapView*` groups, and groups your colorscheme
+defines, always win. Roles, providers and precedence: `:help dap-view-themes`.
+
 ## Develop
 
 ```sh
